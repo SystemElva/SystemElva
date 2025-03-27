@@ -1,0 +1,54 @@
+
+# Raw / Unformatted binary files
+
+## Machine Code
+*.dll
+*.elf
+*.exe
+*.o
+*.so
+
+## Memory Dumps
+*.dump
+*.mem
+
+## Disk images
+*.img
+*.iso
+*.rom
+
+## Other Raw / Unformatted binary files
+*.hex
+*.bin
+
+
+
+# Other (unwanted) binary files
+
+## Graphics image formats
+
+*.bmp
+*.gif
+*.jpeg
+*.jpg
+*.png
+
+
+
+# Full ignored folders
+
+## Convenience Folder
+*/.private/
+
+## Build Interim Result - Container folder
+*/.build/
+
+## Build Results - Container folder
+*/.out/
+
+## Memory Dump - Container folder
+*/.dumps/
+
+## VSCodium & Visual Studio Code - files
+*/.vscode/
+
