@@ -1,0 +1,7 @@
+
+; DO NOT INCLUDE OTHER FILES HERE; DO THAT AT THE BOTTOM OF THIS FILE
+
+stage2_start:
+    cli
+    hlt
+
