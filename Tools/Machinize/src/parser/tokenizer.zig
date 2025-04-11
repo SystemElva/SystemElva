@@ -2,14 +2,18 @@ const std = @import("std");
 const utility = @import("../utility.zig");
 
 const TokenType = enum(u8) {
-    integer,
     identifier,
+    binary,
+    decimal,
+    hexadecimal,
     sign,
 
     pub fn to_string(self: TokenType) [*:0]const u8 {
         switch (self) {
-            .integer => return "Integer",
             .identifier => return "Identifier",
+            .binary => return "BinaryInteger",
+            .decimal => return "DecimalInteger",
+            .hexadecimal => return "HexadecimalInteger",
             .sign => return "Sign",
         }
         return "INVALID";
@@ -46,6 +50,7 @@ pub const TokenizationError = error{
     UnicodeDecoderFailure,
     NonAsciiUsage,
     EndlessComment,
+    InvalidNumberFormat,
 };
 
 pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
@@ -88,6 +93,51 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
 
         if (std.ascii.isDigit(source[offset])) {
             const token_start: u32 = offset;
+            if (source[offset] == '0' and ((offset + 1) < source.len)) {
+                if (source[offset + 1] == 'x') {
+                    offset += 2;
+                    while (offset < source.len) {
+                        if (!std.ascii.isHex(source[offset])) {
+                            break;
+                        }
+                        offset += 1;
+                    }
+                    const len_token = offset - token_start;
+                    var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
+                    @memcpy(token_string, source[token_start .. token_start + len_token]);
+                    token_string[len_token] = 0;
+                    token_list.tokens[token_index] = .{
+                        .type = TokenType.hexadecimal,
+                        .length = len_token,
+                        .string = token_string,
+                    };
+                    token_index += 1;
+                    continue;
+                }
+                if (source[offset + 1] == 'b') {
+                    offset += 2;
+                    while (offset < source.len) {
+                        if ((source[offset] != '0' and source[offset] != '1')) {
+                            if (std.ascii.isAlphanumeric(source[offset])) {
+                                return TokenizationError.InvalidNumberFormat;
+                            }
+                            break;
+                        }
+                        offset += 1;
+                    }
+                    const len_token = offset - token_start;
+                    var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
+                    @memcpy(token_string, source[token_start .. token_start + len_token]);
+                    token_string[len_token] = 0;
+                    token_list.tokens[token_index] = .{
+                        .type = TokenType.binary,
+                        .length = len_token,
+                        .string = token_string,
+                    };
+                    token_index += 1;
+                    continue;
+                }
+            }
             while (offset < source.len) {
                 if (!std.ascii.isDigit(source[offset])) {
                     break;
@@ -99,7 +149,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
             @memcpy(token_string, source[token_start .. token_start + len_token]);
             token_string[len_token] = 0;
             token_list.tokens[token_index] = .{
-                .type = TokenType.integer,
+                .type = TokenType.decimal,
                 .length = len_token,
                 .string = token_string,
             };
