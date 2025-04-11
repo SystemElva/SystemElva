@@ -41,7 +41,11 @@ pub const TokenList = struct {
     }
 };
 
-pub const TokenizationError = error{ UnicodeDecoderFailure, NonAsciiUsage };
+pub const TokenizationError = error{
+    UnicodeDecoderFailure,
+    NonAsciiUsage,
+    EndlessComment,
+};
 
 pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
     // @todo: Implement proper Unicode.
@@ -100,6 +104,60 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
             };
             token_index += 1;
             continue;
+        }
+
+        if (source[offset] == '#') {
+            if ((offset + 1) < source.len) {
+
+                // Skip a single-line comment
+                if (source[offset + 1] == '#') {
+                    while (offset < source.len) {
+                        if (source[offset] == '\n') {
+                            break;
+                        }
+                        offset += 1;
+                    }
+                    continue;
+                }
+
+                // Skip a multi-line comment
+                if (source[offset + 1] == '[') {
+                    // Count the number of opening square brackets
+
+                    offset += 1;
+                    var num_opening_brackets: u16 = 0;
+                    while (offset < source.len) {
+                        num_opening_brackets += 1;
+                        if (source[offset] != '[') {
+                            break;
+                        }
+                        offset += 1;
+                    }
+
+                    // Skip until the correct amount of closing
+                    // square brackets is found
+
+                    skipper_loop: while (offset < source.len) {
+                        var num_closing_brackets: u16 = 0;
+
+                        while (offset < source.len) {
+                            if (source[offset] != ']') {
+                                break;
+                            }
+                            num_closing_brackets += 1;
+                            if (num_closing_brackets >= num_opening_brackets) {
+                                break :skipper_loop;
+                            }
+                            offset += 1;
+                        }
+                        offset += 1;
+                    }
+                    if (offset >= source.len) {
+                        return TokenizationError.EndlessComment;
+                    }
+                    continue;
+                }
+            }
         }
         offset += 1;
     }
