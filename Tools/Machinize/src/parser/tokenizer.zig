@@ -142,12 +142,12 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         var num_closing_brackets: u16 = 0;
 
                         while (offset < source.len) {
-                            if (source[offset] != ']') {
-                                break;
-                            }
                             num_closing_brackets += 1;
                             if (num_closing_brackets >= num_opening_brackets) {
                                 break :skipper_loop;
+                            }
+                            if (source[offset] != ']') {
+                                break;
                             }
                             offset += 1;
                         }
