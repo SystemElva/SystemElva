@@ -1,4 +1,5 @@
 const std = @import("std");
+const utility = @import("../utility.zig");
 
 const TokenType = enum(u8) {
     integer,
@@ -158,6 +159,17 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                     continue;
                 }
             }
+        }
+        if (utility.is_sign(source[offset])) {
+            var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, 2));
+            token_string[0] = source[offset];
+            token_string[1] = 0;
+            token_list.tokens[token_index] = .{
+                .type = TokenType.sign,
+                .length = 1,
+                .string = token_string,
+            };
+            token_index += 1;
         }
         offset += 1;
     }
