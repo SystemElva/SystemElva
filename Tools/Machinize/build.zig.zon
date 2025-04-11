@@ -1,7 +1,8 @@
 .{
-    .name = "Machinize",
-    .version = "0.1.0",
+    .name = .Machinize,
+    .version = "0.1.0-indev",
     .dependencies = .{},
+    .fingerprint = 0x6bb9ea9c3d756d8b,
     .paths = .{
         "build.zig",
         "build.zig.zon",
