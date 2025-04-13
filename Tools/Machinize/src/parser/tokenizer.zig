@@ -22,7 +22,7 @@ pub const TokenType = enum(u8) {
 
 pub const Token = struct {
     type: TokenType,
-    length: u32,
+    length: u32, // @todo: remove this and all references
     string: []u8,
     location: @Vector(2, u32),
 };
