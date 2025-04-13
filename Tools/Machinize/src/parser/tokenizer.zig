@@ -24,6 +24,7 @@ pub const Token = struct {
     type: TokenType,
     length: u32,
     string: []u8,
+    location: @Vector(2, u32),
 };
 
 pub const TokenList = struct {
@@ -35,8 +36,10 @@ pub const TokenList = struct {
         var index: u32 = 0;
         while (index < self.num_tokens) {
             const token = self.tokens[index];
-            try std.fmt.format(writer, "#{d} (T: {s}): \"{s}\":{d}\n", .{
+            try std.fmt.format(writer, "#{d} @ [{d}:{d}] (T: {s}): \"{s}\":{d}\n", .{
                 index,
+                token.location[0],
+                token.location[1],
                 token.type.to_string(),
                 token.string,
                 token.length,
@@ -62,6 +65,9 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
         .tokens = try allocator.alloc(Token, 1024),
     };
 
+    var line: u32 = 1;
+    var column: u32 = 1;
+
     var token_index: u32 = 0;
     var offset: u32 = 0;
     while (offset < source.len) {
@@ -69,13 +75,21 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
             tokens_capacity *= 2;
             token_list.tokens = try allocator.realloc(token_list.tokens, tokens_capacity);
         }
+        if (source[offset] == '\n') {
+            line += 1;
+            column = 1;
+
+            offset += 1;
+        }
 
         if (std.ascii.isAlphabetic(source[offset]) or (source[offset] == '_')) {
-            const token_start: u32 = offset;
+            const token_start = offset;
+            const start_column = column;
             while (offset < source.len) {
                 if (!std.ascii.isAlphabetic(source[offset]) and !std.ascii.isAlphanumeric(source[offset]) and (source[offset] != '_')) {
                     break;
                 }
+                column += 1;
                 offset += 1;
             }
             const len_token = offset - token_start;
@@ -83,13 +97,15 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 .type = TokenType.identifier,
                 .length = len_token,
                 .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
+                .location = .{ line, start_column },
             };
             token_index += 1;
             continue;
         }
 
         if (std.ascii.isDigit(source[offset])) {
-            const token_start: u32 = offset;
+            const token_start = offset;
+            const start_column = column;
             if (source[offset] == '0' and ((offset + 1) < source.len)) {
                 if (source[offset + 1] == 'x') {
                     offset += 2;
@@ -97,6 +113,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         if (!std.ascii.isHex(source[offset])) {
                             break;
                         }
+                        column += 1;
                         offset += 1;
                     }
                     const len_token = offset - token_start;
@@ -104,11 +121,13 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         .type = TokenType.hexadecimal,
                         .length = len_token,
                         .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
+                        .location = .{ line, start_column },
                     };
                     token_index += 1;
                     continue;
                 }
                 if (source[offset + 1] == 'b') {
+                    column += 2;
                     offset += 2;
                     while (offset < source.len) {
                         if ((source[offset] != '0' and source[offset] != '1')) {
@@ -117,6 +136,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                             }
                             break;
                         }
+                        column += 1;
                         offset += 1;
                     }
                     const len_token = offset - token_start;
@@ -124,6 +144,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         .type = TokenType.binary,
                         .length = len_token,
                         .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
+                        .location = .{ line, start_column },
                     };
                     token_index += 1;
                     continue;
@@ -133,6 +154,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 if (!std.ascii.isDigit(source[offset])) {
                     break;
                 }
+                column += 1;
                 offset += 1;
             }
             const len_token = offset - token_start;
@@ -140,6 +162,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 .type = TokenType.decimal,
                 .length = len_token,
                 .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
+                .location = .{ line, start_column },
             };
             token_index += 1;
             continue;
@@ -154,6 +177,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         if (source[offset] == '\n') {
                             break;
                         }
+                        column += 1;
                         offset += 1;
                     }
                     continue;
@@ -163,6 +187,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 if (source[offset + 1] == '[') {
                     // Count the number of opening square brackets
 
+                    column += 1;
                     offset += 1;
                     var num_opening_brackets: u16 = 0;
                     while (offset < source.len) {
@@ -170,6 +195,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         if (source[offset] != '[') {
                             break;
                         }
+                        column += 1;
                         offset += 1;
                     }
 
@@ -187,8 +213,10 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                             if (source[offset] != ']') {
                                 break;
                             }
+                            column += 1;
                             offset += 1;
                         }
+                        column += 1;
                         offset += 1;
                     }
                     if (offset >= source.len) {
@@ -206,9 +234,15 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 .type = TokenType.sign,
                 .length = 1,
                 .string = try allocator.dupe(u8, source[offset .. offset + 1]),
+                .location = .{ line, column },
             };
             token_index += 1;
+
+            column += 1;
+            offset += 1;
+            continue;
         }
+        column += 1;
         offset += 1;
     }
     token_list.num_tokens = token_index;
