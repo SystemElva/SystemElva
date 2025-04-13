@@ -1,7 +1,7 @@
 const std = @import("std");
 const utility = @import("../utility.zig");
 
-const TokenType = enum(u8) {
+pub const TokenType = enum(u8) {
     identifier,
     binary,
     decimal,
@@ -20,10 +20,10 @@ const TokenType = enum(u8) {
     }
 };
 
-const Token = struct {
+pub const Token = struct {
     type: TokenType,
     length: u32,
-    string: [*:0]u8,
+    string: []u8,
 };
 
 pub const TokenList = struct {
@@ -79,13 +79,10 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 offset += 1;
             }
             const len_token = offset - token_start;
-            var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
-            @memcpy(token_string, source[token_start .. token_start + len_token]);
-            token_string[len_token] = 0;
             token_list.tokens[token_index] = .{
                 .type = TokenType.identifier,
                 .length = len_token,
-                .string = token_string,
+                .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
             };
             token_index += 1;
             continue;
@@ -103,13 +100,10 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         offset += 1;
                     }
                     const len_token = offset - token_start;
-                    var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
-                    @memcpy(token_string, source[token_start .. token_start + len_token]);
-                    token_string[len_token] = 0;
                     token_list.tokens[token_index] = .{
                         .type = TokenType.hexadecimal,
                         .length = len_token,
-                        .string = token_string,
+                        .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
                     };
                     token_index += 1;
                     continue;
@@ -126,13 +120,10 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                         offset += 1;
                     }
                     const len_token = offset - token_start;
-                    var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
-                    @memcpy(token_string, source[token_start .. token_start + len_token]);
-                    token_string[len_token] = 0;
                     token_list.tokens[token_index] = .{
                         .type = TokenType.binary,
                         .length = len_token,
-                        .string = token_string,
+                        .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
                     };
                     token_index += 1;
                     continue;
@@ -145,13 +136,10 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
                 offset += 1;
             }
             const len_token = offset - token_start;
-            var token_string: [*:0]u8 = @ptrCast(try allocator.alloc(u8, len_token + 1));
-            @memcpy(token_string, source[token_start .. token_start + len_token]);
-            token_string[len_token] = 0;
             token_list.tokens[token_index] = .{
                 .type = TokenType.decimal,
                 .length = len_token,
-                .string = token_string,
+                .string = try allocator.dupe(u8, source[token_start .. token_start + len_token]),
             };
             token_index += 1;
             continue;
@@ -217,7 +205,7 @@ pub fn tokenize(source: []u8, allocator: std.mem.Allocator) !TokenList {
             token_list.tokens[token_index] = .{
                 .type = TokenType.sign,
                 .length = 1,
-                .string = token_string,
+                .string = try allocator.dupe(u8, source[offset .. offset + 1]),
             };
             token_index += 1;
         }
