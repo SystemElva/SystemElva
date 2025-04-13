@@ -1,4 +1,7 @@
 
+# Convenience folder to withhold changes
+.private/
+
 .zig-cache/
 zig-out/
 
