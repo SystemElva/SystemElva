@@ -1,0 +1,11 @@
+.{
+    .name = .Reductor,
+    .version = "0.1.0-indev",
+    .dependencies = .{},
+    .fingerprint = 0x2ffd957acf6f80dd,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
