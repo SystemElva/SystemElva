@@ -117,3 +117,40 @@ write_text:
     popad
     ret
 
+
+
+; string_length:
+;   Count number of chars in string up to a maximum.
+; 
+; Arguments:
+;   [FURTHEST FROM EBP]
+;     1.  U32       maximum
+;     0.  Ptr32     string
+;  [NEAREST TO EBP]
+; 
+; Return Value:
+;   - [EAX]: Length of string
+string_length:
+.prolog:
+    pushad
+
+.setup_counter_loop:
+    xor ecx, ecx
+
+.counter_loop:
+    mov eax, [ebp - 4]
+    add eax, ecx
+    cmp [eax], byte 0x00
+    je .epilog
+
+    cmp ecx, [ebp - 8]
+    jae .epilog
+
+    inc ecx
+    jmp .counter_loop
+
+.epilog:
+    mov [esp + 28], ecx
+    popad
+    ret
+
