@@ -33,6 +33,34 @@ BACKGROUND_LIGHT_MAGENTA equ 0xd0
 BACKGROUND_YELLOW        equ 0xe0
 BACKGROUND_WHITE         equ 0xf0
 
+; set_background:
+;   Set a color from the BACKGROUND_* - value set as the
+;    background color of the text output system's display.
+; 
+; Arguments:
+;   [FURTHEST FROM EBP]
+;     0.  U16       color_code (Only lower 8 bits used)
+;  [NEAREST TO EBP]
+; 
+; Return Value:
+;   N/A
+set_background:
+.prolog:
+    pushad
+
+.action:
+    mov ah, 0x0b
+    mov bh, 0x00
+    mov bl, [ebp - 2]
+    shr bl, 4 ; Convert the BACKGROUND constant-value to a FOREGROUND one
+    int 0x10
+
+.epilog:
+    popad
+    ret
+
+
+
 ; write_text:
 ;   Put a NUL-terminated character string onto the display
 ;   using the BIOS functions at INT 0x10.
