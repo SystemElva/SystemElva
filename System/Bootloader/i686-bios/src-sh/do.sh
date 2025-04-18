@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/bash
 
 # Ensure that the work-directory is the i686/ - direcetory
 cd $(dirname $0)/..
@@ -22,10 +22,10 @@ display_help() {
 
 case $1 in
     "b" | "build")
-        $SHELL $I686_PATH/src-sh/build.sh ${@:2:"$#"}
+        $I686_PATH/src-sh/build.sh ${@:2:"$#"}
         ;;
     "q" | "qemu")
-        $SHELL $I686_PATH/src-sh/run-qemu.sh ${@:2:"$#"}
+        $I686_PATH/src-sh/run-qemu.sh ${@:2:"$#"}
         ;;
     "h" | "help")
         display_help ${@:2:"$#"}
