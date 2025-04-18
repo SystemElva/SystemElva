@@ -35,13 +35,13 @@ BACKGROUND_WHITE         equ 0xf0
 
 ; set_background:
 ;   Set a color from the BACKGROUND_* - value set as the
-;    background color of the text output system's display.
-; 
+;   background color of the text output system's display.
+;
 ; Arguments:
 ;   [FURTHEST FROM EBP]
 ;     0.  U16       color_code (Only lower 8 bits used)
 ;  [NEAREST TO EBP]
-; 
+;
 ; Return Value:
 ;   N/A
 set_background:
@@ -64,7 +64,7 @@ set_background:
 ; write_text:
 ;   Put a NUL-terminated character string onto the display
 ;   using the BIOS functions at INT 0x10.
-; 
+;
 ; Arguments:
 ;   [FURTHEST FROM EBP]
 ;     3.  U16       color_code (Only lower 8 bits used)
@@ -72,7 +72,7 @@ set_background:
 ;     1.  U32       start_line
 ;     0.  Ptr32     string
 ;  [NEAREST TO EBP]
-; 
+;
 ; Return Value:
 ;   N/A
 write_text:
@@ -119,15 +119,105 @@ write_text:
 
 
 
+; write_bytes: @todo
+;
+; Arguments:
+;   [FURTHEST FROM EBP]
+;     4.  U16       color_code (Only lower 8 bits used)
+;     3.  U32       start_cell
+;     2.  U32       start_line
+;     1.  U32       num_bytes
+;     0.  Ptr32     bytes
+;  [NEAREST TO EBP]
+;
+; Return Value:
+;   N/A
+write_bytes:
+.prolog:
+    pushad
+
+.setup_character_loop:
+    xor edi, edi            ; Character Index
+    mov esi, [ebp - 4]
+
+.character_loop:
+    ; Check for primary exit condition (NUL character)
+    cmp edi, [ebp - 8]
+    je .epilog
+
+    ; Move Cursor
+    mov eax, edi
+    mov edx, 3
+    mul edx
+    add eax, [ebp - 16]     ; Start Column
+    mov dl, al
+    mov dh, [ebp - 12]      ; Line
+    mov ah, 0x02            ; Interrupt Function (move cursor)
+    mov bh, 0               ; Display Page
+    int 0x10
+
+    xor ecx, ecx
+    mov cl, [esi + edi]     ; Get Character
+    shr cl, 4               ; Get Upper Nibble
+    mov ebx, .lookup
+    add ebx, ecx
+    mov cl, [ebx]
+
+    ; Display the character
+    mov ah, 0x09
+    mov al, cl
+    mov bh, 0
+    mov bl, [ebp - 18]
+    mov cx, 1
+    int 0x10
+
+    ; Move Cursor
+    mov eax, edi
+    mov edx, 3
+    mul edx
+    add eax, [ebp - 16]     ; Start Column
+    inc al
+    mov dl, al
+    mov dh, [ebp - 12]      ; Line
+    mov ah, 0x02            ; Interrupt Function (move cursor)
+    mov bh, 0               ; Display Page
+    int 0x10
+
+    xor ecx, ecx
+    mov cl, [esi + edi]     ; Get Character
+    and cl, 0x0f               ; Get Upper Nibble
+    mov ebx, .lookup
+    add ebx, ecx
+    mov cl, [ebx]
+
+    ; Display the character
+    mov ah, 0x09
+    mov al, cl
+    mov bh, 0
+    mov bl, [ebp - 18]
+    mov cx, 1
+    int 0x10
+
+    inc edi
+    jmp .character_loop
+
+.epilog:
+    popad
+    ret
+
+.lookup:
+    db "0123456789abcdef"
+
+
 ; string_length:
 ;   Count number of chars in string up to a maximum.
-; 
+;
 ; Arguments:
 ;   [FURTHEST FROM EBP]
 ;     1.  U32       maximum
 ;     0.  Ptr32     string
 ;  [NEAREST TO EBP]
-; 
+;
 ; Return Value:
 ;   - [EAX]: Length of string
 string_length:
