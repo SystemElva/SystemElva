@@ -60,12 +60,7 @@ find_partition:
 ; 1) Disk ID 
 ; NEAREST TO BP
 load_sector:
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push si
+    pusha
 
     ; Allocate Disk Address Packet
     sub sp, 16
@@ -86,8 +81,7 @@ load_sector:
     mov si, [bp - 8]
     mov [bx + 8], si
     mov [bx + 10], word 0
-    mov [bx + 12], word 0
-    mov [bx + 14], word 0
+    mov [bx + 12], dword 0
 
     ; Perform the interrupt
     mov si, bx
@@ -96,12 +90,7 @@ load_sector:
     int 0x13
 
     add sp, 16
-    pop si
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
+    popa
     ret
 
 
