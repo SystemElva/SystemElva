@@ -5,6 +5,7 @@ I686_PATH=$(pwd)
 
 BOOTSECTOR_OBJECTS="$I686_PATH/.build/modules/bootsector"
 CODE_PARTITION_OBJECTS="$I686_PATH/.build/modules/code-partition"
+BOOTFS_PARTITION="$I686_PATH/.build/modules/bootfs/"
 
 BOOTSECTOR_SOURCES="$I686_PATH/modules/bootsector/src-asm"
 CODE_PARTITION_SOURCES="$I686_PATH/modules/code-partition/src-asm"
@@ -37,4 +38,5 @@ truncate $OUTPUT_FILE --size=$HD_DISKETTE_BYTES
 
 dd conv=notrunc cbs=512 if=$BOOTSECTOR_OBJECTS/object.bin of=$OUTPUT_FILE
 dd conv=notrunc cbs=512 if=$CODE_PARTITION_OBJECTS/object.bin of=$OUTPUT_FILE oseek=1
+dd conv=notrunc cbs=512 if=$BOOTFS_PARTITION/fat12.img of=$OUTPUT_FILE oseek=64
 
