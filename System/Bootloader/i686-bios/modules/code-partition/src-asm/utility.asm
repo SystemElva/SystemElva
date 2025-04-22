@@ -244,3 +244,47 @@ string_length:
     popad
     ret
 
+
+
+; memory_equal:
+;   Check two memory regions for equality.
+;
+; Arguments:
+;   [FURTHEST FROM EBP]
+;     2.  U32       len_regions
+;     1.  Ptr32     region_2
+;     0.  Ptr32     region_1
+;  [NEAREST TO EBP]
+;
+; Return Value:
+;   - [EAX]: 1 if equal, 0 if not equal.
+memory_equal:
+    pushad
+
+.setup_checker_loop:
+    xor ecx, ecx
+    mov esi, [ebp - 4]
+    mov edi, [ebp - 8]
+
+    mov eax, 1 ; Return Value
+
+.checker_loop:
+    cmp ecx, [ebp - 12]
+    jae .finish
+
+    mov dh, [esi + ecx]
+    mov dl, [edi + ecx]
+    cmp dh, dl
+    jne .not_equal
+
+    inc ecx
+    jmp .checker_loop
+
+.not_equal:
+    xor eax, eax
+
+.finish:
+    mov [esp + 28], eax
+    popad
+    ret
+
