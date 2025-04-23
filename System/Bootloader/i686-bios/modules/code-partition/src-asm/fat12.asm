@@ -6,6 +6,205 @@ FAT12_MAXIMUM_RDR_ENTRIES           equ 0x11
 FAT12_LOGICAL_SECTORS_PER_FAT       equ 0x16
 
 FAT12_DIRENT_CLUSTER_START          equ 0x1a
+FAT12_DIRENT_ATTRIBUTES             equ 0x0b
+
+
+
+; fat12_search_in_directory_table:
+;
+; Arguments (2):
+;   [FURTHEST FROM EBP]
+;     4.  Ptr32     name
+;     3.  U32       table_entry_index
+;     2.  U32       num_sectors
+;     1.  U32       first_sector
+;               First sector of the complete directory table
+;
+;     0.  Ptr32     partition_reader    (32 bytes)
+;
+; Return Value:
+;   - [EAX]:    Equality:       1
+;               Inequality      0
+fat12_directory_entry_equals:
+.prolog:
+    pushad
+    sub esp, 32
+    mov esi, esp
+
+    ; Stack contents over the course of this function:
+    ;
+    ;   | ESI + | Bytes | Description                     |
+    ;   | ----- | ----- | ------------------------------- |
+    ;   |  0    |  4    |  partition_reader (argument)    |
+    ;   |  4    |  4    |  name_pointer (argument)        |
+    ;   |  8    |  4    |  file_buffer (argument)         |
+    ;   |       |       |                                 |
+
+    ; If this cannot be a long filename - enabled entry because
+    ; of being the first entry in the directory table.
+    mov eax, [ebp - 16]
+    cmp eax, 0
+    je .check_short_entry
+
+    xor ecx, ecx
+
+.long_filename_entry_counter_loop:
+    ; There can be at most 20 LFN entries in a row
+    cmp ecx, 20
+    ja .invalid_entries
+
+    ; Load previous sector if this is the
+    ; first entry in this sector
+    mov eax, [ebp - 16]
+    and eax, 0x0f
+    cmp eax, 0
+    ja .is_entry_long_filename
+
+.load_previous_sector:
+    ; Calculate sector within table
+    mov eax, [ebp - 16]
+    cmp eax, ecx            ; Check whether this would go before the
+    jae .invalid_entries    ; first entry of the directory table
+    sub eax, ecx
+    shr eax, 4
+
+    ; Add table start
+    add eax, [ebp - 8]
+
+    ; Load sector
+    push ebp
+    mov ebp, esp
+    push dword [esi]
+    push dword (SECTOR_READER_BUFFER + 512) ; A secondadry sector reader buffer is used
+    push eax                                ; because this function is used in other
+    call disk_read_sector                   ; functions which may already use another sector
+    mov esp, ebp
+    pop ebp
+
+.is_entry_long_filename:
+    ; Get entry offset within sector
+    mov ebx, [ebp - 16]
+    sub ebx, ecx
+    and ebx, 0x0f
+
+    ; Calculate address of current entry as loaded in memory
+    shl ebx, 5
+    add ebx, (SECTOR_READER_BUFFER + 512)
+
+    cmp [ebx + FAT12_DIRENT_ATTRIBUTES], byte 0x0f ; Attributes for LFN entries
+    je .long_filename_end_found
+
+    inc ecx
+    jmp .long_filename_entry_counter_loop
+
+.long_filename_end_found:
+    cli
+    hlt
+
+.check_short_entry:
+
+
+.invalid_entries:
+.inequality:
+
+
+.equality:
+    add esp, 32
+    popad
+    mov eax, 1
+    ret
+
+
+
+
+; fat12_search_in_directory_table:
+;
+; Arguments (2):
+;   [FURTHEST FROM EBP]
+;     4.  Ptr32     name
+;     3.  Ptr32     file_buffer         (32 bytes)
+;     2.  U32       num_sectors
+;     1.  U32       first_sector
+;     0.  Ptr32     partition_reader    (32 bytes)
+;
+; Return Value:
+;   - [EAX]:    Success:  Index of file index
+;               Failure:  0xffffffff 
+fat12_search_in_directory_table:
+.prolog:
+    pushad
+    sub esp, 32
+    mov esi, esp
+
+    ; Stack contents over the course of this function:
+    ;
+    ;   | ESI + | Bytes | Description                     |
+    ;   | ----- | ----- | ------------------------------- |
+    ;   |  0    |  4    |  partition_reader (argument)    |
+    ;   |  4    |  4    |  name_pointer (argument)        |
+    ;   |  8    |  4    |  file_buffer (argument)         |
+    ;   |       |       |                                 |
+
+.setup_table_loop:
+    xor ecx, ecx
+
+.table_loop:
+    ; Exit condition (end of table reached)
+    mov eax, ecx
+    shr eax, 4
+    cmp eax, [ebp - 12]
+
+    ; Test whether this entry is a multiple of 16, because if it is
+    ; -> A new sector must be loaded
+    mov eax, ecx
+    and eax, 0x0f
+    cmp eax, 0
+    jne .check_entry
+
+.load_new_sector:
+    ; Calculate the index of the sector to load
+    mov eax, ecx
+    shr eax,  4
+    add eax, [ebp - 8]
+
+    push ebp
+    mov ebp, esp
+    push dword [esi]
+    push dword SECTOR_READER_BUFFER
+    push eax
+    call disk_read_sector
+    mov esp, ebp
+    pop ebp
+
+.check_entry:
+    ; Get the byte offset of the current entry
+    mov ebx, ecx
+    shl ebx, 5
+    add ebx, SECTOR_READER_BUFFER
+
+    push ebp
+    mov ebp, esp
+    push ebx
+    push dword [esi]
+    push dword 11
+    call memory_equal
+    mov esp, ebp
+    pop ebp
+
+    cmp eax, 0
+    jne .entry_found
+
+    inc ecx
+    jmp .table_loop
+
+.entry_found:
+    cli
+    hlt
+
+.epilog:
+    add esp, 32
+    popad
+    ret
 
 
 
@@ -98,12 +297,18 @@ fat12_search_in_root_directory_region:
     shl ebx, 5
     add ebx, SECTOR_READER_BUFFER
 
+    ; Get sector count of table
+    mov edx, [esi + 30]
+    shr edx, 5
+
     push ebp
     mov ebp, esp
-    push ebx
+    push dword [esi + 4]
+    push dword [esi + 12]
+    push edx                ; Sector Count
+    push ecx                ; Table Entry Index
     push dword [esi]
-    push dword 11
-    call memory_equal
+    call fat12_directory_entry_equals
     mov esp, ebp
     pop ebp
 
@@ -140,9 +345,6 @@ fat12_search_in_root_directory_region:
     mov eax, 1
     ret
 
-.destination:
-    dw 0xffff
-
 
 
 ; fat12_find:
@@ -155,7 +357,8 @@ fat12_search_in_root_directory_region:
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:
-;   N/A
+;   - [EAX]:    0xffffffff  (on error)
+;               0           (on success)
 fat12_search:
 .prolog:
     pushad
@@ -206,7 +409,6 @@ fat12_search:
     jmp .splitter_loop
 
 .after_suffix_check:
-
     ; Enforce uppercase names
     cmp al, 'a'
     jb .copy_character
@@ -243,9 +445,23 @@ fat12_search:
     mov esp, ebp
     pop ebp
 
+    cmp eax, 0
+    je .root_directory_entry_found
+
+    mov esp, esi
+    add esp, 32
+    popad
+    mov eax, 0xffffffff
+    ret
+
+.root_directory_entry_found:
+    
+
+
 .epilog:
     add esp, 32
     popad
+    mov eax, 0
     ret
 
 
