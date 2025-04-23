@@ -5,7 +5,7 @@ MBR_PARTITION_LIST_START equ 0x01be
 ; disk_open_partition:
 ;   
 ;
-; Arguments (8):
+; Arguments (3):
 ;   [FURTHEST FROM EBP]
 ;     2.  U16       partiton_index
 ;     1.  U16       disk_id             (Only lower byte used)
@@ -21,17 +21,11 @@ disk_open_partition:
     mov esi, esp
 
 .load_mbr_sector:
-    mov ecx, SECTOR_READER_BUFFER
-    and ecx, 0x0f
-
-    mov ebx, SECTOR_READER_BUFFER
-    shr ebx, 4
-
     ; Prepare disk address packet
     mov [esi], word 0x10        ; Length of DAP
     mov [esi + 2], word 1       ; Number of sectors
-    mov [esi + 4], cx           ; Memory Buffer Offset
-    mov [esi + 6], bx           ; Memory Buffer Segment
+    mov [esi + 4], word (SECTOR_READER_BUFFER & 0xf)  ; Memory Buffer Offset
+    mov [esi + 6], word (SECTOR_READER_BUFFER >> 4)  ; Memory Buffer Segment
     mov [esi + 8], dword 0      ; Lower part of LBA
     mov [esi + 12], dword 0     ; Upper part of LBA
 
@@ -69,6 +63,59 @@ disk_open_partition:
     ; Partition Index
     mov dl, [ebp - 8]
     mov [ebx + 30], dl
+
+.epilog:
+    add esp, 16
+    popad
+    ret
+
+
+
+; disk_read_sector:
+;   
+;
+; Arguments (3):
+;   [FURTHEST FROM EBP]
+;     2.  U32       sector_index        (Within Partition)
+;     1.  Ptr32     output_buffer       (512 bytes)
+;     0.  Ptr32     partition           (32 bytes)
+;   [NEAREST TO EBP]
+;
+; Return Value:
+;   N/A
+disk_read_sector:
+.prolog:
+    pushad
+    sub esp, 16
+    mov esi, esp
+
+.load_mbr_sector:
+    ; Get Sector Index
+    mov ebx, [ebp - 4]          ; Get partition
+    mov eax, [ebx + 20]         ; Partition's first LBA
+    add eax, [ebp - 12]         ; Add offset within partition
+
+    ; Get Memory Buffer Segment:Offset
+    mov cx, [ebp - 8]
+    and cx, 0x0f
+    xor ecx, ecx
+    mov bx, [ebp - 8]
+    shr bx, 4
+
+    ; Prepare disk address packet
+    mov [esi], word 0x10        ; Length of DAP
+    mov [esi + 2], word 1       ; Number of sectors
+    mov [esi + 4], cx           ; Memory Buffer Offset
+    mov [esi + 6], bx           ; Memory Buffer Segment
+    mov [esi + 8], eax          ; Lower part of LBA
+    mov [esi + 12], dword 0     ; Upper part of LBA
+
+    mov ebx, [ebp - 4]          ; Get partition
+    mov dl, [ebx + 29]          ; Get partition number
+
+    ; Call the disk service interrupt
+    mov ah, 0x42
+    int 0x13
 
 .epilog:
     add esp, 16
