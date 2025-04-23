@@ -35,22 +35,17 @@ stage2_start:
     mov esp, ebp
     pop ebp
 
-    mov eax, esi
-    add eax, (256 - 32)
+    mov ebx, esi
+    add ebx, (256 - 64)
 
     push ebp
     mov ebp, esp
+    push ebx
     push eax
-    push dword 32
-    push dword 3
-    push dword 6
-    push word FOREGROUND_WHITE
-    call write_bytes
+    push dword text.path.systemelva_config
+    call fat12_open_file
     mov esp, ebp
     pop ebp
-
-    cli
-    hlt
 
     push dword text.unimplemented
     jmp crash_with_text
@@ -61,9 +56,9 @@ stage2_start:
 ;   @todo
 ; 
 ; Arguments:
-;   [FURTHEST FROM EBP]
-;     0.  U16       color_code (Only lower 8 bits used)
-;  [NEAREST TO EBP]
+;   [FURTEHST FROM STACK-TOP]
+;     0.  Ptr32     string_pointer
+;   [NEAREST TO STACK-TOP]
 ; 
 ; Return Value:
 ;   N/A
@@ -113,5 +108,10 @@ text:
 .unimplemented:
     db "Unimplemented Feature!", 0x00
 
+.path.systemelva_config:
+    db "/boot/systemelva/config.json", 0x00
+
 %include "utility.asm"
 %include "disk.asm"
+%include "fat12.asm"
+
