@@ -60,7 +60,7 @@ disk_push_sector:
 
 
 
-; disk_pop_sector:
+; disk_pop_sectors:
 ;   Shrinks the sector stack by a given amount of sectors.
 ;
 ; Arguments (1):
@@ -70,7 +70,7 @@ disk_push_sector:
 ;
 ; Return Value:
 ;   N/A
-disk_pop_sector:
+disk_pop_sectors:
 .prolog:
     push ax
 
