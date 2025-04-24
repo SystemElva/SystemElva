@@ -8,6 +8,16 @@ explanation of the fields' contents.
 ```C
 struct GenericFilesystem
 {
+    unsigned int (*fn_open)(
+        struct GenericFilesystem *filesystem,
+        struct GenericFile *file_buffer,
+        const char *path
+    );
+
+    void (*fn_close)(
+        struct GenericFile *file
+    );
+
     unsigned int (*fn_read)(
         struct GenericFile *file,
         void *buffer,
@@ -29,11 +39,7 @@ struct GenericFilesystem
         unsigned int len_path_buffer
     );
 
-    void (*fn_free)(
-        struct GenericFile *file
-    );
-
-    void (*fn_destructor)(
+    void (*fn_destruct)(
         struct GenericFilesystem *filesystem
     );
 
@@ -46,17 +52,45 @@ struct GenericFilesystem
 
 |  Index  |  Offset  |  Length  |  Type       |  Field Name          |
 |-------  | -------- | -------- | ----------- | -------------------- |
-|  0      |  0x00    |  4       |  Pointer32  |  `fn_read`           |
-|  1      |  0x04    |  4       |  Pointer32  |  `fn_write` *        |
-|  2      |  0x08    |  4       |  Pointer32  |  `fn_stat`           |
-|  3      |  0x0c    |  4       |  Pointer32  |  `fn_free` *         |
-|  4      |  0x10    |  4       |  Pointer32  |  `fn_destruct` *     |
-|  5      |  0x14    |  12      |             |  `padding`           |
-|  6      |  0x20    |  32      |  Unknown    |  `specifics`         |
+|  0      |  0x00    |  4       |  Pointer32  |  `fn_open`           |
+|  1      |  0x04    |  4       |  Pointer32  |  `fn_close` *        |
+|  2      |  0x08    |  4       |  Pointer32  |  `fn_read`           |
+|  3      |  0x0c    |  4       |  Pointer32  |  `fn_write` *        |
+|  4      |  0x10    |  4       |  Pointer32  |  `fn_stat`           |
+|  5      |  0x14    |  4       |  Pointer32  |  `fn_destruct` *     |
+|  6      |  0x18    |  8       |             |  `padding`           |
+|  7      |  0x20    |  32      |  Unknown    |  `specifics`         |
 
 > Optional entries are marked with an asterisk (\*).
 
-0. `fn_read: Pointer32`  
+0. `fn_open: Pointer32`  
+    Pointer to a function that opens  a file and prepares the internal
+    structures for later usage.
+
+    Stack-provided Arguments:
+
+    0. `filesystem: Pointer32`  
+        Pointer to the structure of the filesystem.
+
+    1. `file_buffer: Pointer32`  
+        Pointer to the  32-byte memory area at  which to intialize the
+        file entry. The file entry may point to an internal structure.
+
+    2. `path: Pointer32`  
+        UTF-8 string with the absolute path to the file which is to be
+        opened. It must be an absolute path.
+
+1. `fn_close: Pointer32` *  
+    Pointer to a function used to free a file entry and its memory.
+
+    Stack-provided Arguments:
+
+    0. `file: Pointer32`  
+        The file which  is no longer needed and should  be freed. Note
+        that calling this function makes the file unusable.
+
+
+2. `fn_read: Pointer32`  
     Pointer to  a function  that reads  bytes from  a file  within the
     filesystem.
 
@@ -87,7 +121,7 @@ struct GenericFilesystem
         This can be smaller than the  `num_bytes`-argument if the file
         end was reached.
 
-1. `fn_write: Pointer32` *  
+3. `fn_write: Pointer32` *  
     Pointer to a function that writes some data to a file.
 
     Stack-provided Arguments:
@@ -106,7 +140,7 @@ struct GenericFilesystem
 
     - `EAX`: `written_bytes`, or `0xffffffff` on error.
 
-2. `fn_stat: Pointer32`  
+4. `fn_stat: Pointer32`  
     Pointer to a  function used to  gather data  about a  folder item,
     like its length, type (file, folder, ...), full path, et cetera.
 
@@ -138,16 +172,7 @@ struct GenericFilesystem
         NUL character. This is the full string's length, not only what
         has actually been written! This only isn't returned on error.
 
-3. `fn_free: Pointer32` *  
-    Pointer to a function used to free a file entry and its memory.
-
-    Stack-provided Arguments:
-
-    0. `file`  
-        The file which  is no longer needed and should  be freed. Note
-        that calling this function makes the file unusable.
-
-4. `fn_destruct: Pointer32` *  
+5. `fn_destruct: Pointer32` *  
     Frees the resources used up by the filesystem.
 
     Stack-provided Arguments:
@@ -156,12 +181,12 @@ struct GenericFilesystem
         Pointer to the filesystem of which to free the working memory.
         The filesystem won't be usable after this has been called.
 
-5. `padding`  
+6. `padding`  
     Bytes used for alignment purposes. They  can contain anything, but
     to be safe for  the case of  later usage, they should initially be
     set to zero and not be touched thereafter.
 
-6. `specifics`  
+7. `specifics`  
     Space for  information  used by  the actual,  specific  filesystem
     driver. This most likely is not the entirety of the memory used by
     any non-trivial driver.
