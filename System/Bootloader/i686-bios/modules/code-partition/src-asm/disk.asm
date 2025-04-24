@@ -1,5 +1,7 @@
 
-SECTOR_READER_BUFFER equ (0xa000 + 31 * 512)
+; 512 bytes before the sector stack's bottommost entry.
+RAW_DISK_READ_BUFFER equ (SECTOR_STACK_START - 512)
+
 MBR_PARTITION_LIST_START equ 0x01be
 
 ; disk_open_partition:
@@ -24,8 +26,8 @@ disk_open_partition:
     ; Prepare disk address packet
     mov [esi], word 0x10        ; Length of DAP
     mov [esi + 2], word 1       ; Number of sectors
-    mov [esi + 4], word (SECTOR_READER_BUFFER & 0xf)  ; Memory Buffer Offset
-    mov [esi + 6], word (SECTOR_READER_BUFFER >> 4)  ; Memory Buffer Segment
+    mov [esi + 4], word (RAW_DISK_READ_BUFFER & 0xf)  ; Memory Buffer Offset
+    mov [esi + 6], word (RAW_DISK_READ_BUFFER >> 4)  ; Memory Buffer Segment
     mov [esi + 8], dword 0      ; Lower part of LBA
     mov [esi + 12], dword 0     ; Upper part of LBA
 
@@ -38,7 +40,7 @@ disk_open_partition:
     xor edi, edi
     mov di, [ebp - 8]
     shl edi, 4
-    add edi, MBR_PARTITION_LIST_START + SECTOR_READER_BUFFER
+    add edi, MBR_PARTITION_LIST_START + RAW_DISK_READ_BUFFER
 
 .copy_mbr_info:
     mov ebx, [ebp - 4]
@@ -122,3 +124,4 @@ disk_read_sector:
     popad
     ret
 
+%include "disk/sector_stack.asm"
