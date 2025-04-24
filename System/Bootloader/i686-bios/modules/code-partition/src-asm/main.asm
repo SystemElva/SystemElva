@@ -38,15 +38,6 @@ stage2_start:
     mov ebx, esi
     add ebx, (256 - 64)
 
-    push ebp
-    mov ebp, esp
-    push ebx
-    push eax
-    push dword text.path.systemelva_config
-    call fat12_open_file
-    mov esp, ebp
-    pop ebp
-
     push dword text.unimplemented
     jmp crash_with_text
 
@@ -108,10 +99,6 @@ text:
 .unimplemented:
     db "Unimplemented Feature!", 0x00
 
-.path.systemelva_config:
-    db "/boot/systemelva/config.json", 0x00
-
 %include "utility.asm"
 %include "disk.asm"
-%include "fat12.asm"
 
