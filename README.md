@@ -16,7 +16,7 @@ an operating system with a rather small codebase.
     Contains the core  system components that will  be linked together
     to form the bootloader, kernel and to provide drivers.
 
-    - [`Bootloader/`](System/Bootloader/README.md)  
+    - [`Bootloader/`](./System/Bootloader)  
         The ElvaBoot bootloader currently only has the goal to be able
         to boot the SystemElva-kernel (which is called `Galvan`).
     
@@ -36,7 +36,7 @@ an operating system with a rather small codebase.
     Tools that are made  to work on other systems,  made to be used by
     SystemElva (and possibly other systems) for building.
 
-    - [`Machinize/`](Tools/Machinize/README.md)  
+    - [`Machinize/`](./Tools/Machinize)  
         An in-development assembler written in Zig.
 
     - `Reductor` *  
