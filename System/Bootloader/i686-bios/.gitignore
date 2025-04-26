@@ -37,18 +37,15 @@
 
 # Full ignored folders
 
-## Convenience Folder
-*/.private/
-
 ## Build Interim Result - Container folder
-*/.build/
+.build/
 
 ## Build Results - Container folder
-*/.out/
+.out/
 
 ## Memory Dump - Container folder
-*/.dumps/
+.dumps/
 
 ## VSCodium & Visual Studio Code - files
-*/.vscode/
+.vscode/
 

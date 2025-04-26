@@ -3,6 +3,7 @@
 
 bits 16
 org 0xa000
+
 stage2_start:
 .setup_stack:
     mov ebx, 0x800
@@ -10,33 +11,54 @@ stage2_start:
     mov ebp, 0x2000
     mov esp, ebp
 
+    sub esp, 256
+    mov esi, esp
+
+    ; Save the origin disk identifier
+    mov [esi], dx
+
+    ; Reset display
     mov ah, 0x00
     mov al, 0x03
     int 0x10
 
-    ; Save the origin disk identifier
-    push ax
+.load_partition:
+    mov eax, esi
+    add eax, (256 - 32)
 
-.find_kernel:
+    push ebp
+    mov ebp, esp
+    push eax
+    push word [esi]
+    push word 1
+    call disk_open_partition
+    mov esp, ebp
+    pop ebp
+
+    mov ebx, esi
+    add ebx, (256 - 64)
 
     push dword text.unimplemented
     jmp crash_with_text
 
-    cli
-    hlt
 
-; write_text:
-;   Put a NUL-terminated character string onto the display
-;   using the BIOS functions at INT 0x10.
+
+; crash_with_text:
+;   @todo
 ; 
 ; Arguments:
-;   [FURTHEST FROM EBP]
-;     0.  U16       color_code (Only lower 8 bits used)
-;  [NEAREST TO EBP]
+;   [FURTEHST FROM STACK-TOP]
+;     0.  Ptr32     string_pointer
+;   [NEAREST TO STACK-TOP]
 ; 
 ; Return Value:
 ;   N/A
 crash_with_text:
+    ; Reset/Clear display
+    mov ah, 0x00
+    mov al, 0x03
+    int 0x10
+
     pop ebx
 
     push ebp
@@ -78,4 +100,5 @@ text:
     db "Unimplemented Feature!", 0x00
 
 %include "utility.asm"
+%include "disk.asm"
 
