@@ -1,0 +1,12 @@
+{
+    "version": 1,
+
+    "actions": [
+        {
+            "name": "boot",
+            "display": "Boot SystemElva-Galvan",
+            "trigger": "boot.eboot1 /boot/galvan.bin"
+        }
+    ]
+}
+
