@@ -22,9 +22,12 @@ stage2_start:
     mov al, 0x03
     int 0x10
 
+.initialize:
+    mov [SECTOR_STACK_HEIGHT], word 0
+
 .load_partition:
     mov eax, esi
-    add eax, (256 - 32)
+    add eax, (256 - 16)
 
     push ebp
     mov ebp, esp
@@ -35,9 +38,30 @@ stage2_start:
     mov esp, ebp
     pop ebp
 
+    ; Save the pointer to the partition reader
+    mov [esi + 4], eax
+
+    push ebp
+    mov ebp, esp
+    push eax
+    call identify_filesystem
+    mov esp, ebp
+    pop ebp
+
+    cmp eax, FILESYSTEM_FAT12
+    je .load_fat12_filesystem
+
+    push dword text.no_boot_partition
+    jmp crash_with_text
+
+.load_fat12_filesystem:
     mov ebx, esi
     add ebx, (256 - 64)
 
+    cli
+    hlt
+
+.unimplemented:
     push dword text.unimplemented
     jmp crash_with_text
 
@@ -99,6 +123,13 @@ text:
 .unimplemented:
     db "Unimplemented Feature!", 0x00
 
-%include "utility.asm"
-%include "disk.asm"
+.no_boot_partition:
+    db "Failed finding the boot partition!", 0x00
 
+.config_path:
+    db "/boot/systemelva/config.ini", 0x00
+
+%include "utility.asm"
+%include "path.asm"
+
+%include "disk.asm"
