@@ -123,6 +123,9 @@ text:
 .unimplemented:
     db "Unimplemented Feature!", 0x00
 
+.long_filename_unimplemented:
+    db "FAT12 LFN has't been implemented yet!", 0x00
+
 .no_boot_partition:
     db "Failed finding the boot partition!", 0x00
 
@@ -133,3 +136,4 @@ text:
 %include "path.asm"
 
 %include "disk.asm"
+
