@@ -1,0 +1,8 @@
+{
+    "editor.rulers": [
+        // For assembly code
+        12,
+        32,
+        80,
+    ],
+}
