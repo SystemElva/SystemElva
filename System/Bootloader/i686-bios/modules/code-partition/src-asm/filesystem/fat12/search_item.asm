@@ -98,8 +98,12 @@ fat12_search_item:
     mov esp, ebp
     pop ebp
 
+    mov eax, [ecx + 0x04]
+    mov [esi + 0x10], eax
+
 .setup_subpath_loop:
     mov eax, [ecx + 8]
+    xor ecx, ecx
 
 .subpath_loop:
 
@@ -109,7 +113,7 @@ fat12_search_item:
     push eax                        ; len_path
     push ebx                        ; buffer
     push dword 512                  ; len_buffer
-    push dword 0                    ; element_index
+    push ecx                        ; element_index
     call path_copy_element
     mov esp, ebp
     pop ebp
@@ -119,10 +123,10 @@ fat12_search_item:
 
     push ebp
     mov ebp, esp
-    push eax
-    push dword [esi]
-    push dword [esi + 10]
-    push ebx
+    push eax                        ; Result Buffer
+    push dword [esi]                ; Filesystem
+    push dword [esi + 0x10]         ; Current Item's First Clsuter
+    push ebx                        ; Path Current Element
     call fat12_search_item_in_subfolder
     mov esp, ebp
     pop ebp
@@ -488,7 +492,7 @@ fat12_search_item_in_subfolder:
     mov esi, esp
 
     ; Store arguments
-    
+
     ;; Result
     mov eax, [ebp - 0x04]
     mov [esi], eax
@@ -549,37 +553,136 @@ fat12_search_item_in_subfolder:
     push ebp
     mov ebp, esp
     push ebx
-    push eax ; placeholder
+    push eax
     call disk_push_sector
     mov esp, ebp
     pop ebp
-    mov [esi + 0x1c], eax
+    mov [esi + 0x18], eax
 
 .setup_search_loop:
-    ;; Initialize current cluster index within the file allocation table)
-    ;; to the directory's first cluster.
-    mov eax, [esi + 0x08]
-    mov [esi + 0x20], eax
+    ; Initialize current cluster index within the file allocation table)
+    ; to the directory's first cluster.
+    mov     eax,                [esi + 0x08]    ; Argument: first_cluster
+    mov     [esi + 0x20],       eax
 
-    xor ecx, ecx    ; Table Entry index
+    xor     ecx,                ecx             ; Initialize Table Entry Index
 
 .search_loop:
-    mov eax, ecx
-    and eax, 0x0a
-    cmp eax, 0
-    ja .setup_sector_loop
+    ; Check whether the current entry index is a multiple of 16, in which
+    ; case, a new sector must be loaded.
+    mov     eax,                ecx
+    and     eax,                0x0f
+    cmp     eax,                0
+    ja      .setup_sector_loop
 
-    ; Check whether a new cluster must be retrieved
+.load_new_sector:
+    ; Check whether this sector's index is a multiple of the
+    ; Sectors Per Cluster, in which case, a new cluster must be gotten.
+    xor     edx,                edx
+    mov     ebx,                [esi + 0x04]    ; Filesystem
+    mov     dl,                 [ebx + 0x2d]    ; Filesystem's Sectors Per Cluster
+    mov     ebx,                [esi + 4]
+    mov     eax,                ecx             ; Table Entry Index
+    ;; If this is the table's first entry,
+    ;; a new cluster must be retrieved anyways.
+    cmp     eax,                0
+    je      .retrieve_next_cluster
 
-    xor edx, edx
-    mov ebx, [esi + 4]
-    mov dl, [ebx + 0x2d]    ; Sectors per cluster
-    mov eax, ecx    ; Table Entry Index
-    div edx
-    ;; Check whether there is a remainder (if there is one, no new cluster
-    ;; must be retrieved, because the current cluster contains more sectors).
-    cmp edx, 0
-    ja .load_next_sector
+    div     edx
+    cmp     edx,                0
+    ;; This jump is taken if a new cluster IS NOT needed.
+    ja      .load_next_sector
+
+.retrieve_next_cluster:
+    ; Get the index of the next cluster
+
+    ;; Integer-Multiply by 1.5 to get the byte index of the current entry.
+    mov     eax,                [esi + 0x20]
+    mov     edx,                3
+    mul     edx
+    ;; Check whether the intermediate value is zero, in which case,
+    ;; a few steps can be (and MUST be) skipped.
+    cmp     eax,                0
+    je      .find_next_cluster_index
+
+    mov     ebx,                2
+    xor     edx,                edx
+    div     ebx
+    mov     edi,                eax             ; Save the current entry's index
+    ;; Calculate the FAT's currently needed sector
+    mov     ebx,                512
+    xor     edx,                edx
+    div     ebx
+
+.find_next_cluster_index:
+    add     edx,                [esi + 0x10]    ; FAT Start Sector
+    mov     ebx,                [esi + 0x18]    ; FAT Sector Buffer
+    xor     eax,                eax
+    mov     ax,                 [ebx + eax]
+
+    ; Decode the next cluster index
+
+    mov     edx,                ecx
+    and     edx,                1
+    cmp     edx,                0
+    je      .decode_even_cluster_index
+
+.decode_odd_cluster_index:
+    shr     ah,                 4
+    and     eax,                0xffff
+    jmp .load_fat_sector
+
+.decode_even_cluster_index:
+    shl     al,                 4
+    shr     ax,                 4
+    and     eax,                0xffff
+
+.load_fat_sector:
+    mov [.buffer], eax
+
+    push ebp
+    mov ebp, esp
+    push dword .buffer
+    push dword 4
+    push dword 2
+    push dword 4
+    push word FOREGROUND_LIGHT_RED
+    call write_bytes
+    mov esp, ebp
+    pop ebp
+
+    cli
+    hlt
+.buffer:
+    dd 0
+
+    mov     ebx,                [esi + 0x18]    ; FAT Sector Buffer
+    mov     edx,                [esi + 0x04]    ; Filesystem
+    mov     edx,                [edx + 0x20]    ; Filesystem's Partition Reader
+
+    push    ebp
+    mov     ebp,                esp
+    push    edx
+    push    ebx
+    push    eax                 ; Index of current FAT sector
+    call    disk_read_sector
+    mov     esp,                ebp
+    pop     ebp
+
+    mov     ebx,                [esi + 0x18]    ; FAT Sector Buffer
+    push ebp
+    mov ebp, esp
+    push ebx
+    push dword 16
+    push dword 2
+    push dword 4
+    push word FOREGROUND_LIGHT_RED
+    call write_bytes
+    mov esp, ebp
+    pop ebp
+
+    cli
+    hlt
 
 .load_next_sector:
     ; EDX contains the sector index within this cluster
@@ -593,23 +696,57 @@ fat12_search_item_in_subfolder:
     add eax, [esi + 0x14]   ; Data Area Start
     ;; Add current sector's offset
     add eax, ebx
-    mov ebx, eax
 
-    ; Multiply with 1.5
+    ; Multiply with 1.5 to get the byte offset inside the FAT
     mov eax, [esi + 0x20]       ; Current Cluster Index
     mov edx, 3
     mul edx
     mov edx, 2
     div edx
+    mov edi, eax
+
+    ; Check whether the next part of the FAT needs to be loaded.
+    mov eax, edx
+    and eax, 0x1ff
+    cmp eax, 0
+    ja .load_fat_entry
+
+    ; @todo: Load next FAT part.
+
+.load_fat_entry:
+    ; EBX contains the current cluster's start
+    ; EDI contains the FAT entry's first byte offset
 
     cmp edx, 1
     je .odd_entry
 
+    ; Limit to 512
+    and edi, 0x1ff
+
     ; Even Entry
-    mov ebx, [esi + 0x10]
+    mov ebx, [esi + 0x18] ; FAT start
+    add ebx, edi
+    ; EBX now contains the fat entry's first byte's address
+
+    mov ax, [ebx]
+    mov [.odd_entry], ax
+
+    push ebp
+    mov ebp, esp
+    push dword .odd_entry
+    push dword 2
+    push dword 5
+    push dword 1
+    push word FOREGROUND_LIGHT_RED
+    call write_bytes
+    mov esp, ebp
+    pop ebp
+
+    cli
+    hlt
 
 .odd_entry:
-    
+    dw 0
 
 .setup_sector_loop:
 
