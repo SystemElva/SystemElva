@@ -34,8 +34,15 @@ build_bootable_test() {
 
     TEST_NAME=$($INI --get General:Name $TEST_CONFIG)
     TEST_VERSION=$($INI --get General:Version $TEST_CONFIG)
-
     echo "Building Test: $TEST_NAME, version $TEST_VERSION"
+
+    PRE_BUILD_SCRIPT=$($INI --get Scripts:Pre-Build $TEST_CONFIG)
+    PRE_BUILD_SCRIPT=${PRE_BUILD_SCRIPT/"{code-partition}"/$CODE_PARTITION}
+    PRE_BUILD_SCRIPT=${PRE_BUILD_SCRIPT/"{test}"/$TEST_PATH}
+    if [[ -f $PRE_BUILD_SCRIPT ]];
+    then
+        bash $PRE_BUILD_SCRIPT
+    fi
 
     SOURCE=$($INI --get "General:Source" $TEST_CONFIG)
     SOURCE=${SOURCE/"{code-partition}"/$CODE_PARTITION}
@@ -43,7 +50,7 @@ build_bootable_test() {
 
     mkdir -p $BUILD_FOLDER/code-partition/tests/
     nasm -o $BUILD_FOLDER/code-partition/tests/$TEST_NAME.bin \
-        $SOURCE -i $CODE_PARTITION/src-asm
+        $SOURCE -i $(dirname $SOURCE) -i $CODE_PARTITION/src-asm
 
     mkdir -p $I686_BIOS_FOLDER/.tests/code-partition
     HD_DISKETTE_BYTES=$((2880*512)) # 2880 sectors of 512 bytes each
@@ -51,17 +58,17 @@ build_bootable_test() {
 
     truncate $OUTPUT_FILE --size $HD_DISKETTE_BYTES
 
-    dd \
+    dd status=none \
         conv=notrunc cbs=512 \
         if=$BUILD_FOLDER/bootsector/object.bin \
         of=$OUTPUT_FILE
 
-    dd \
+    dd status=none \
         conv=notrunc oseek=1 cbs=512 \
         if=$BUILD_FOLDER/code-partition/tests/$TEST_NAME.bin \
         of=$OUTPUT_FILE
 
-    dd \
+    dd status=none \
         conv=notrunc oseek=64 cbs=512 \
         if=$I686_BIOS_FOLDER/.build/modules/bootfs/fat12.img \
         of=$OUTPUT_FILE
