@@ -38,6 +38,7 @@ FAT12_DIRENT_ATTRIBUTES             equ 0x0b
 ;   | 0x10  |  4    |  current_item_first_cluster     |
 ;   | 0x14  |  4    |  last_item_first_cluster        |
 ;   | 0x18  |  4    |  last_directory_table_index     |
+;   | 0x30  |  16   |  incoming_results               |
 ;
 ; > Items marked with an asterisk (*) are duplicates of an
 ; > argument, used for giving to another procedure within
