@@ -54,7 +54,7 @@ main:
     push    ebp
     mov     ebp,                esp
     push    ebx
-    call    string_length
+    call    strlen
     mov     esp,                ebp
     pop     ebp
 
@@ -96,4 +96,4 @@ status_codes:
     db "Correct", 0x00
 
 %include "utility.asm"
-%include "generated-test-cases.asm"
+%include "generated_test_cases.asm"
