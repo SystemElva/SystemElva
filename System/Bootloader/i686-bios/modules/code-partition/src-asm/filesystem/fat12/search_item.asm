@@ -29,7 +29,7 @@ FAT12_DIRENT_ATTRIBUTES             equ 0x0b
 ;   [NEAREST TO EBP]
 ;
 ;
-; Red Zone (512 + 32 =  544 bytes):
+; Red Zone (512 + 64 =  576 bytes):
 ;
 ;   | ESI + | Bytes | Description                     |
 ;   | ----- | ----- | ------------------------------- |
@@ -49,7 +49,7 @@ FAT12_DIRENT_ATTRIBUTES             equ 0x0b
 fat12_search_item:
 .prolog:
     pushad
-    sub esp, (512 + 32)
+    sub esp, (512 + 64)
     mov esi, esp
 
     mov eax, [ebp - 4]
@@ -62,7 +62,7 @@ fat12_search_item:
     push ebp
     mov ebp, esp
     push dword [esi + 4]            ; path
-    call string_length
+    call strlen
     mov esp, ebp
     pop ebp
 
@@ -158,7 +158,7 @@ hlt
 
 .failed:
 .epilog:
-    add esp, (512 + 32)
+    add esp, (512 + 64)
     popad
     ret
 
@@ -247,6 +247,96 @@ fat12_postprocess_short_filename:
 .epilog:
     add esp, 32
     popad
+    ret
+
+
+
+; fat12_is_long_file_name:
+;   @todo
+;
+; Arguments (3):
+;   [FURTHEST FROM EBP]
+;
+;     0.  ptr32                         item_name
+;
+;   [NEAREST TO EBP]
+;
+; Return Value:
+;   EAX:  u32                           0 for short file names
+;                                       1 for long file names
+;
+fat12_is_long_file_name:
+.prolog:
+    pushad
+    sub esp, 32
+
+.get_string_length:
+    mov     ebx,                [ebp - 4]   ; Argument: item_name
+
+    push    ebp
+    mov     ebp,                esp
+    push    ebx                             ; String
+    push    dword               16          ; Maximum length to check
+    call    strlen
+    mov     esp,                ebp
+    pop     ebp
+    mov     ecx,                eax
+
+    cmp     eax,                11
+    ja      .long_file_name
+
+.check_name_length:
+    mov     ebx,                [ebp - 4]   ; Argument: item_name
+
+    push    ebp
+    mov     ebp,                esp
+    push    ebx
+    push    ecx                             ; Sring Length
+    push    word '.'
+    call    search_forwards
+    mov     esp,                ebp
+    pop     ebp
+
+    cmp     eax,                0xffffffff
+    jne     .has_suffix
+
+    ; If there is no separator but only the name, test whether the
+    ; name itself (which is the complete string) only has 8 characters.
+    cmp     ecx,                8
+    ja      .long_file_name
+    jmp     .short_file_name
+
+.has_suffix:
+    cmp     eax,                8
+    ja      .long_file_name
+
+.check_suffix_length:
+    ; Advance onto the first point of 'item_name'.
+    add     ebx,                eax
+    ; Jump over  the point
+    inc     ebx
+
+    push    ebp
+    mov     ebp,                esp
+    push    ebx                             ; String
+    push    dword               8           ; Maximum length to check
+    call    strlen
+    mov     esp,                ebp
+    pop     ebp
+
+    cmp     eax,                3
+    ja      .long_file_name
+
+.short_file_name:
+    add     esp,                32
+    popad
+    xor     eax,                eax
+    ret
+
+.long_file_name:
+    add     esp,                32
+    popad
+    mov     eax,                1
     ret
 
 
@@ -543,6 +633,8 @@ fat12_search_item_in_subfolder:
     mov cx, [ebx + 0x2e]    ; Number of reserved sectors
     mov [esi + 0x10], cx
 
+
+
     ; Calculate data_area_start
 
     ;; Calculate size of FATs
@@ -562,6 +654,8 @@ fat12_search_item_in_subfolder:
 
     ;; Store the data_area_start into the red zone
     mov [esi + 0x14], eax
+
+
 
     ; Get Partition Identifier
     mov ebx, [ebx + 0x20]
