@@ -25,12 +25,17 @@ disk_push_sector:
 
 .calculate_address:
     cmp word [SECTOR_STACK_HEIGHT], SECTOR_STACK_CAPACITY
-    jae .sector_stack_exceeded
+    jb .sector_stack_exceeded
 
+    mov [esp + 28], dword 0
+    popad
+    ret
+
+.load_sector:
     ; Get stack height in bytes
     xor eax, eax
     mov ax, word [SECTOR_STACK_HEIGHT]
-    shr eax, 9
+    shl eax, 9
 
     ; Point onto stack
     add eax, SECTOR_STACK_START
@@ -48,15 +53,36 @@ disk_push_sector:
     mov esp, ebp
     pop ebp
 
-    jmp .epilog
-
-.sector_stack_exceeded:
-    mov [esp + 28], dword 0
+    ; Increase sector stack height by one
+    mov ax, word [SECTOR_STACK_HEIGHT]
+    inc ax
+    mov [SECTOR_STACK_HEIGHT], ax
 
 .epilog:
     popad
     ret
 
+
+
+disk_push_dummy_sector:
+.prolog:
+    pushad
+
+    xor     eax,                eax
+    cmp word [SECTOR_STACK_HEIGHT], SECTOR_STACK_CAPACITY
+    jae     .epilog
+
+    ; Get stack height in bytes
+    xor eax, eax
+    mov ax, word [SECTOR_STACK_HEIGHT]
+    shl eax, 9
+
+    inc word [SECTOR_STACK_HEIGHT]
+
+.epilog:
+    mov [esp + 28], eax
+    popad
+    ret
 
 
 
