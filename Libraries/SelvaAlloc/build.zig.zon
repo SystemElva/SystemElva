@@ -1,0 +1,13 @@
+.{
+    .name = .SelvaAlloc,
+    .version = "0.1.0-indev",
+    .fingerprint = 0xf7951402ac73443,
+    .minimum_zig_version = "0.15.0-dev.278+7733b5dbe",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+    },
+}
