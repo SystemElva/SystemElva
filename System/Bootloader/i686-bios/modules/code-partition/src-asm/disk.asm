@@ -7,14 +7,29 @@ RAW_DISK_READ_SEGMENT equ (RAW_DISK_READ_ADDRESS >> 4)
 
 MBR_PARTITION_LIST_START equ 0x01be
 
+
+
+struc       Partition
+
+    .first_lba                  resd 1
+    .sector_count               resd 1
+    .type_id                    resb 1
+    .disk_id                    resb 1
+    .partition_index            resb 1
+    reserved                    resb 5
+
+endstruc
+
+
+
 ; disk_open_partition:
 ;   Open a partition and write the result value to the given buffer.
 ;
 ; Arguments (3):
 ;   [FURTHEST FROM EBP]
-;     2.  u16                           partiton_index
+;     2.  u16                           partition_index
 ;     1.  u16                           disk_id
-;     0.  ptr32<PartitionReader>        partition_reader
+;     0.  ptr32<Partition>              partition
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:
@@ -50,24 +65,24 @@ disk_open_partition:
 
     ; Partition's First LBA
     mov     edx,                [edi + 8]
-    mov     [ebx],              edx
+    mov     [ebx + Partition.first_lba],        edx
 
     ; LBA count
     mov     edx,                [edi + 12]
-    mov     [ebx + 0x04],       edx
+    mov     [ebx + Partition.sector_count],     edx
 
     ; Partition Type
     mov     dl,                 [edi + 4]
-    mov     [ebx + 0x08],       dl
+    mov     [ebx + Partition.type_id],          dl
 
 .copy_argument_info:
     ; Disk Identifier
     mov     dl,                 [ebp - 6]
-    mov     [ebx + 0x09],       dl
+    mov     [ebx + Partition.disk_id],          dl
 
     ; Partition Index
     mov     dl,                 [ebp - 8]
-    mov     [ebx + 0x0a],       dl
+    mov     [ebx + Partition.partition_index],  dl
 
 .epilog:
     add     esp,                16
@@ -83,7 +98,7 @@ disk_open_partition:
 ;   [FURTHEST FROM EBP]
 ;     2.  u32                           sector_index
 ;     1.  ptr32<[512]u8>                output_buffer
-;     0.  ptr32<PartitionReader>        partition_reader
+;     0.  ptr32<Partition>              partition
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:
@@ -96,14 +111,14 @@ disk_read_sector:
 
 .load_mbr_sector:
     ; Get Sector Index
-    mov     ebx,                [ebp - 4]       ; Get partition
-    mov     eax,                [ebx]           ; Partition's first LBA
-    add     eax,                [ebp - 12]      ; Add offset within partition
+    mov     ebx,                [ebp - 0x04]    ; Get partition
+    mov     eax,                [ebx + Partition.first_lba]
+    add     eax,                [ebp - 0x0b]    ; Add offset within partition
 
     ; Get Memory Buffer Segment:Offset
-    mov     ecx,                [ebp - 8]
+    mov     ecx,                [ebp - 0x08]
     and     cx,                 0x0f
-    mov     ebx,                [ebp - 8]
+    mov     ebx,                [ebp - 0x08]
     shr     bx,                 4
 
     ; Prepare disk address packet
@@ -115,7 +130,7 @@ disk_read_sector:
     mov     [esi + 0x0c],       dword 0         ; Upper part of LBA
 
     mov     ebx,                [ebp - 0x04]    ; Get partition
-    mov     dl,                 [ebx + 0x09]    ; Get disk identifier
+    mov     dl,                 [ebx + Partition.disk_id]
 
     ; Call the disk service interrupt
     mov     ah,                 0x42
