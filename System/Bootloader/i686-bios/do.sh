@@ -36,7 +36,7 @@ case $1 in
     "bt" | "build-tests")
         $I686_PATH/src-sh/tests/build.sh ${@:2:$#}
         ;;
-    "lt" | "list-test-suites")
+    "lt" | "list-test-builds")
         $I686_PATH/src-sh/tests/list.sh ${@:2:$#}
         ;;
     "rt" | "run-tests")

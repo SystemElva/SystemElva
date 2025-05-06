@@ -7,11 +7,12 @@ I686_PATH=$(pwd)
 
 INI="$I686_PATH/src-sh/ini.sh"
 
+START_TIME=$(date "+%Y-%m-%d.%H-%M-%S")
 TEST_BUILD_LIST=$(ls $I686_PATH/.tests/builds | sort --reverse)
 
 BUILD_INDEX="0"
 BUILD_LABEL=0
-ALL_TEST_SUITES=0
+ALL_TEST_SUITES=1
 INPUT_TEST_SUITES=""
 
 validate_build_index() {
@@ -62,11 +63,6 @@ gather_arguments() {
                     ACCEPT="TEST-SUITES"
                     continue
                 fi
-                if [[ "$ARGUMENT" == "-a" || "$ARGUMENT" == "--all-suites" ]];
-                then
-                    ALL_TEST_SUITES=1
-                    continue
-                fi
 
                 if [[ "$ARGUMENT" == "-i="* ]];
                 then
@@ -112,14 +108,6 @@ gather_arguments() {
                     INPUT_TEST_SUITES=${ARGUMENT:9:$LEN_VALUE}
                     continue
                 fi
-                if [[ "$ARGUMENT" == "-q" ]];
-                then
-                    BUILD_LABEL=0
-                    BUILD_INDEX=0
-                    ALL_TEST_SUITES=1
-                    NUM_BUILDS=$(echo $TEST_BUILD_LIST | wc -l)
-                    continue
-                fi
                 ;;
             "INDEX")
                 BUILD_INDEX=$ARGUMENT
@@ -134,6 +122,7 @@ gather_arguments() {
                 ACCEPT="ALL"
                 ;;
             "TEST-SUITES")
+                ALL_TEST_SUITES=0
                 INPUT_TEST_SUITES=$ARGUMENT
                 ACCEPT="ALL"
                 ;;
@@ -187,7 +176,24 @@ search_labelled_test_build() {
     exit 1
 }
 
-run_single_test_suite() {
+write_unit_test_suite_log_separator() {
+    CONFIG_PATH=$1
+
+    printf "======== Running test suite: " >> $LOG_PATH
+    printf $($INI -g General:Name $CONFIG_PATH) >> $LOG_PATH
+    echo " ========" >> $LOG_PATH
+
+    echo "" >> $LOG_PATH
+    printf "## test.ini:\n" >> $LOG_PATH
+    cat $CONFIG_PATH | while read INI_LINE 
+    do
+        echo "# $INI_LINE" >> $LOG_PATH
+    done
+
+    echo -e "\n-------- Starting specific output --------" >> $LOG_PATH
+}
+
+run_single_test_unit_suite() {
     TEST_SUITE_NAME=$1
 
     TEST_SUITE_PATH=$TEST_BUILD_FOLDER/suites/$TEST_SUITE_NAME
@@ -196,14 +202,15 @@ run_single_test_suite() {
         $TEST_SUITE_PATH/sources \
         Scripts:Execute)
 
-    cd $TEST_SUITE_PATH/sources
+    cd $TEST_SUITE_PATH
     if [[ -f $EXECUTE_SCRIPT ]];
     then
-        $EXECUTE_SCRIPT
+        write_unit_test_suite_log_separator $TEST_SUITE_PATH/sources/test.ini
+        $EXECUTE_SCRIPT $LOG_PATH
     fi
 }
 
-run_all_test_suites() {
+run_all_unit_test_suites() {
     TEST_BUILD_FOLDER=$1
 
     if [[ $ALL_TEST_SUITES == 0 ]];
@@ -220,9 +227,10 @@ run_all_test_suites() {
             echo "FAIL(run-script): Unknown test suite: $TEST_SUITE"
             continue
         fi
-        run_single_test_suite $TEST_SUITE
+        run_single_test_unit_suite $TEST_SUITE
     done
 }
+
 
 
 
@@ -238,4 +246,9 @@ fi
 BUILD_FOLDER=$(echo $TEST_BUILD_LIST | cut -d" " -f$FIELD_INDEX)
 BUILD_FOLDER="$I686_PATH/.tests/builds/$BUILD_FOLDER"
 
-run_all_test_suites $BUILD_FOLDER
+mkdir -p $I686_PATH/.tests/logs
+LOG_PATH=$I686_PATH/.tests/logs/$START_TIME.log
+
+echo -e "Test Build Instance - Start Time: $START_TIME\n" >> $LOG_PATH
+
+run_all_unit_test_suites $BUILD_FOLDER

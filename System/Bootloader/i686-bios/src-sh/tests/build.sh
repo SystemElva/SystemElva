@@ -164,13 +164,30 @@ run_builtin_nasm_builder() {
     INCLUDE_PATH_LIST=$(process_include_path_list $RAW_INCLUDE_PATHS)
     SOURCE_PATH=$(read_config_path $TEST_CONFIG $SUITE_BUILD_FOLDER Building:Source)
 
-    nasm -fbin -o $SUITE_BUILD_FOLDER/../objects/object.bin $SOURCE_PATH $INCLUDE_PATH_LIST
+    TEST_ENVIRONMENT=$($INI -g General:Environment $TEST_CONFIG)
+
+    if [[ $TEST_ENVIRONMENT == "bootable" ]];
+    then
+        nasm -fbin -o $SUITE_BUILD_FOLDER/../objects/object.bin $SOURCE_PATH $INCLUDE_PATH_LIST
+    fi
+
+    if [[ $TEST_ENVIRONMENT == "host" ]];
+    then
+        OBJECT_FILE=$SUITE_BUILD_FOLDER/../objects/object.o
+        EXECUTABLE_FILE=$SUITE_BUILD_FOLDER/../objects/object.elf
+        nasm -felf32 -o $OBJECT_FILE $SOURCE_PATH $INCLUDE_PATH_LIST
+        ld -m elf_i386 -o $EXECUTABLE_FILE $OBJECT_FILE
+    fi
 }
 
 run_user_script_builder() {
     SUITE_BUILD_FOLDER="$1"
 
     USER_SCRIPT_PATH=$(read_config_path $TEST_CONFIG $SUITE_BUILD_FOLDER Scripts:Build)
+    if [[ ! -f $USER_SCRIPT_PATH ]];
+    then
+        return
+    fi
     $USER_SCRIPT_PATH $I686_PATH
 }
 
@@ -213,7 +230,10 @@ build_single_unit_test_suite() {
     esac
 
     PACKAGING_SCRIPT=$(read_config_path $TEST_CONFIG $SUITE_BUILD_FOLDER "Scripts:Package")
-    $PACKAGING_SCRIPT $I686_PATH "$BUILD_PATH/suites/$UNIT_TEST_NAME"
+    if [[ -f $PACKAGING_SCRIPT ]];
+    then
+        $PACKAGING_SCRIPT $I686_PATH "$BUILD_PATH/suites/$UNIT_TEST_NAME"
+    fi
 
     cd ..
 }
@@ -229,11 +249,6 @@ build_all_module_unit_tests( ) {
     do
         UNIT_TEST_PATH=$MODULE_PATH/tests/unit/$UNIT_TEST_NAME
 
-        # Skip hidden unit tests
-        if [[ $UNIT_TEST_NAME == .* ]];
-        then
-            continue
-        fi
         if [[ ! -f "$UNIT_TEST_PATH/test.ini" ]];
         then
             echo "Failed finding file 'test.ini' for unit test '$UNIT_TEST_NAME'!"
@@ -250,6 +265,11 @@ build_all_module_peeks() {
 
     MODULE_PATH="$I686_PATH/modules/$MODULE_NAME"
 
+    PEEK_NAMES=$(ls $MODULE_PATH/tests/peeks)
+    for PEEK_NAME in $PEEK_NAMES;
+    do
+        echo $PEEK_NAME
+    done
 }
 
 build_all_tests_of_single_module() {
