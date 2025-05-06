@@ -25,7 +25,7 @@ disk_push_sector:
 
 .calculate_address:
     cmp word [SECTOR_STACK_HEIGHT], SECTOR_STACK_CAPACITY
-    jb .sector_stack_exceeded
+    jae .sector_stack_exceeded
 
     mov [esp + 28], dword 0
     popad
@@ -61,6 +61,11 @@ disk_push_sector:
 .epilog:
     popad
     ret
+
+.sector_stack_exceeded:
+    push dword text.sector_stack_exceeded
+    jmp crash_with_text
+
 
 
 

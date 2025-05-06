@@ -9,6 +9,9 @@ text:
 .no_boot_partition:
     db "Failed finding the boot partition!", 0x00
 
+.sector_stack_exceeded:
+    db "Sector Stack exceeded!", 0x00
+
 .config_path:
     db "/boot/elvaboot/config.json", 0x00
 
