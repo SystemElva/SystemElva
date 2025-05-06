@@ -1,3 +1,0 @@
-file.json
-something.txt
-something.json
