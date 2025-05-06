@@ -6,14 +6,6 @@ Available Actions:
 » [ b | build ]
     Build ElvaBoot and place the output runnable disk image at
     '.out/elvaboot-\$DATE.bin'.
-    
-    Flags:
-    - [ -o  | --output ]
-    - [ -t  | --partition-table ]
-    - [ -al | --allow-list ] <feature-list>
-    - [ -bl | --block-list ] <feature-list>
-    - [ -af | --allow-file ] <feature-file>
-    - [ -bf | --block-file ] <feature-file>
 
 » [ q | qemu ]
     Emulate the last built version of the ElvaBoot using QEMU.
