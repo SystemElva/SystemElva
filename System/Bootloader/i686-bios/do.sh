@@ -27,8 +27,26 @@ case $1 in
     "q" | "qemu")
         $I686_PATH/src-sh/run-qemu.sh ${@:2:"$#"}
         ;;
+    "c" |"cleanup")
+        $I686_PATH/src-sh/cleanup.sh ${@:2:"$#"}
+        ;;
     "fs" | "make-bootfs")
-        $I686_PATH/modules/bootfs/makefs.sh ${@:2:$#}
+        $I686_PATH/src-sh/makefs.sh ${@:2:$#}
+        ;;
+    "bt" | "build-tests")
+        $I686_PATH/src-sh/tests/build.sh ${@:2:$#}
+        ;;
+    "lt" | "list-test-suites")
+        $I686_PATH/src-sh/tests/list.sh ${@:2:$#}
+        ;;
+    "rt" | "run-tests")
+        $I686_PATH/src-sh/tests/run.sh ${@:2:$#}
+        ;;
+    "ct" | "cleanup-tests")
+        $I686_PATH/src-sh/tests/cleanup.sh ${@:2:$#}
+        ;;
+    "ca" |"cleanup-all")
+        $I686_PATH/src-sh/cleanup-all.sh ${@:2:"$#"}
         ;;
     "h" | "help")
         display_help ${@:2:"$#"}
@@ -38,4 +56,3 @@ case $1 in
         echo "$ $0 help"
         ;;
 esac
-

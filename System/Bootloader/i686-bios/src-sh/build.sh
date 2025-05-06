@@ -14,6 +14,15 @@ OUTPUT_DIRECTORY=$I686_PATH/.out
 
 EXECUTION_TIME=$(date "+%Y-%m-%d.%H-%M-%S")
 
+COLOR_YELLOW='\033[1;33m'
+COLOR_RESET='\033[0m'
+
+if [[ ! -f $BOOTFS_PARTITION/fat12.img ]];
+then
+    printf "${COLOR_YELLOW}INFO: Didn't find an boot-fs. Creating one!${COLOR_RESET}\n"
+    $I686_PATH/modules/bootfs/makefs.sh
+fi
+
 # Create the objects folder, in case it hasn't been created before
 mkdir -p $BOOTSECTOR_OBJECTS
 mkdir -p $CODE_PARTITION_OBJECTS
@@ -36,7 +45,7 @@ OUTPUT_FILE=$OUTPUT_DIRECTORY/elvaboot-$EXECUTION_TIME.img
 HD_DISKETTE_BYTES=$((2880*512)) # 2880 sectors of 512 bytes each
 truncate $OUTPUT_FILE --size=$HD_DISKETTE_BYTES
 
-dd conv=notrunc cbs=512 if=$BOOTSECTOR_OBJECTS/object.bin of=$OUTPUT_FILE
-dd conv=notrunc cbs=512 if=$CODE_PARTITION_OBJECTS/object.bin of=$OUTPUT_FILE oseek=1
-dd conv=notrunc cbs=512 if=$BOOTFS_PARTITION/fat12.img of=$OUTPUT_FILE oseek=64
+dd status=none conv=notrunc cbs=512 if=$BOOTSECTOR_OBJECTS/object.bin of=$OUTPUT_FILE
+dd status=none conv=notrunc cbs=512 if=$CODE_PARTITION_OBJECTS/object.bin of=$OUTPUT_FILE oseek=1
+dd status=none conv=notrunc cbs=512 if=$BOOTFS_PARTITION/fat12.img of=$OUTPUT_FILE oseek=64
 
