@@ -20,7 +20,7 @@ COLOR_RESET='\033[0m'
 if [[ ! -f $BOOTFS_PARTITION/fat12.img ]];
 then
     printf "${COLOR_YELLOW}INFO: Didn't find an boot-fs. Creating one!${COLOR_RESET}\n"
-    $I686_PATH/modules/bootfs/makefs.sh
+    $I686_PATH/src-sh/makefs.sh
 fi
 
 # Create the objects folder, in case it hasn't been created before
