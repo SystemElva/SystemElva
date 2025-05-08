@@ -10,8 +10,8 @@ FAT12_LOGICAL_SECTORS_PER_FAT       equ 0x16
 ;
 ; Arguments (2):
 ;   [FURTHEST FROM EBP]
-;     1.  Ptr32     filesystem_buffer   (64 bytes)
-;     0.  Ptr32     partition_reader
+;     1.  ptr32<Fat12Filesystem>                filesystem_buffer
+;     0.  ptr32<Partition>                      partition
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:
@@ -24,7 +24,7 @@ fat12_open_filesystem:
     mov ebx, [ebp - 8] ; Get filesystem buffer
     mov [ebx], dword fat12_open_file
     mov [ebx + 4], dword fat12_close_file
-    mov [ebx + 8], dword fat12_read_from_file
+    mov [ebx + 8], dword fat12_read_file
     mov [ebx + 12], dword 0
     mov [ebx + 16], dword fat12_get_file_statistics
 

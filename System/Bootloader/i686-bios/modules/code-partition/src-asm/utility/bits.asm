@@ -18,10 +18,9 @@ count_ones:
 .setup_checker_loop:
     xor ecx, ecx
     xor edx, edx
-    mov ebx, [ebp - 4]
 
 .checker_loop:
-    mov eax, ebx
+    mov eax, [ebp - 4]
     shr eax, cl
     and eax, 1
 
@@ -38,4 +37,3 @@ count_ones:
     mov [esp + 28], edx
     popad
     ret
-

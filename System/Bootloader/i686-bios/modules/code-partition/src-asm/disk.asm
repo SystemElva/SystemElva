@@ -58,7 +58,7 @@ disk_open_partition:
     xor     edi,                edi
     mov     di,                 [ebp - 8]
     shl     edi,                4
-    add     edi,                MBR_PARTITION_LIST_START + RAW_DISK_READ_ADDRESS,
+    add     edi,                (MBR_PARTITION_LIST_START + RAW_DISK_READ_ADDRESS)
 
 .copy_mbr_info:
     mov     ebx,                [ebp - 4]
@@ -119,7 +119,7 @@ disk_read_sector:
     mov     ecx,                [ebp - 0x08]
     and     cx,                 0x0f
     mov     ebx,                [ebp - 0x08]
-    shr     bx,                 4
+    shr     ebx,                4
 
     ; Prepare disk address packet
     mov     [esi],              word 0x10       ; Length of DAP

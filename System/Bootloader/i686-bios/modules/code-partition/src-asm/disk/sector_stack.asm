@@ -13,8 +13,8 @@ SECTOR_STACK_CAPACITY equ 16
 ;
 ; Arguments (2):
 ;   [FURTHEST FROM EBP]
-;     1.  U32       sector_index        (Within Partition)
-;     0.  Ptr32     partition_reader    (32 bytes)
+;     1.  u32                           sector_index            (Within Partition)
+;     0.  ptr32<Partition>              partition
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:
@@ -27,17 +27,13 @@ disk_push_sector:
     cmp word [SECTOR_STACK_HEIGHT], SECTOR_STACK_CAPACITY
     jae .sector_stack_exceeded
 
-    mov [esp + 28], dword 0
-    popad
-    ret
-
 .load_sector:
     ; Get stack height in bytes
     xor eax, eax
     mov ax, word [SECTOR_STACK_HEIGHT]
     shl eax, 9
 
-    ; Point onto stack
+    ; Point onto sector stack
     add eax, SECTOR_STACK_START
     mov [esp + 28], eax ; Save the value as return value
 
@@ -54,9 +50,7 @@ disk_push_sector:
     pop ebp
 
     ; Increase sector stack height by one
-    mov ax, word [SECTOR_STACK_HEIGHT]
-    inc ax
-    mov [SECTOR_STACK_HEIGHT], ax
+    inc word [SECTOR_STACK_HEIGHT]
 
 .epilog:
     popad
@@ -96,7 +90,7 @@ disk_push_dummy_sector:
 ;
 ; Arguments (1):
 ;   [FURTHEST FROM EBP]
-;     0.  U16       num_sectors
+;     0.  u16                           num_sectors
 ;   [NEAREST TO EBP]
 ;
 ; Return Value:

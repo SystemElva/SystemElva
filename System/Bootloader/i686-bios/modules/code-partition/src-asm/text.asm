@@ -26,3 +26,6 @@ text:
 
 .short_file_name:
     db "Short File Name!", 0x00
+
+.boot_partition_filesystem_not_implemented:
+    db "Filesystem of boot-partition has no built-in driver!", 0x00

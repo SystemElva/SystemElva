@@ -28,7 +28,7 @@ identify_fat12:
     mov esi, esp
 
 .load_first_sector:
-    mov eax, [ebp -4]
+    mov eax, [ebp - 4]
     push ebp
     mov ebp, esp
     push eax
