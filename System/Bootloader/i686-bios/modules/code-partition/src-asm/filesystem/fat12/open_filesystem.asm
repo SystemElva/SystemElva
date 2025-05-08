@@ -26,7 +26,7 @@ fat12_open_filesystem:
     mov [ebx + 4], dword fat12_close_file
     mov [ebx + 8], dword fat12_read_from_file
     mov [ebx + 12], dword 0
-    mov [ebx + 16], dword fat12_file_statistics
+    mov [ebx + 16], dword fat12_get_file_statistics
 
 .set_argument_data:
     mov eax, [ebp - 4]
@@ -79,4 +79,3 @@ fat12_open_filesystem:
 .epilog:
     popad
     ret
-

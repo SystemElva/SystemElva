@@ -6,5 +6,5 @@
 
 %include "disk.asm"
 %include "filesystem/identification.asm"
-; %include "filesystem/fat12.asm"
+%include "filesystem/fat12/all.asm"
 
