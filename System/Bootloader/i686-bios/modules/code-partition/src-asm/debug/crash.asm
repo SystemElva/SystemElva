@@ -1,5 +1,5 @@
 
-; crash_with_text:
+; crash:
 ;   Write the text that was last pushed onto the stack and then halt indefinitely.
 ;   NOTE: This function only works when JMP'd to, not when being CALL'd.
 ; 
@@ -10,13 +10,13 @@
 ; 
 ; Return Value:
 ;   N/A
-crash_with_text:
+crash:
     ; Reset/Clear display
     mov ah, 0x00
     mov al, 0x03
     int 0x10
 
-    pop ebx
+    mov ebx, [ebp - 4]
 
     push ebp
     mov ebp, esp

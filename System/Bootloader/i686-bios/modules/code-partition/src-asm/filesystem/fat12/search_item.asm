@@ -482,11 +482,11 @@ fat12_search_item_in_root_folder:
     ; @todo: Collect long filename entry and compare the
     ;        name to the one that is being searched.
 
-    push fat12_text.long_file_names_unimplemented
-    jmp crash_with_text
+    mov     ebp,                esp
+    push    dword fat12_text.long_file_names_unimplemented
+    jmp     crash
 
 .check_short_filename:
-
     mov eax, esi
     add eax, 32
 
@@ -820,8 +820,10 @@ fat12_search_item_in_subfolder:
     jne .short_filename_entry
 
     ; @todo: Collect long filename entry instead of crashing
-    push fat12_text.long_file_names_unimplemented
-    jmp crash_with_text
+
+    mov     ebp,                esp
+    push    dword fat12_text.long_file_names_unimplemented
+    jmp     crash
 
 .short_filename_entry:
     mov eax, esi

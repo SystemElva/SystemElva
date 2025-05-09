@@ -72,12 +72,11 @@ stage2_start:
 
 .unimplemented:
     push    dword text.unimplemented
-    jmp     crash_with_text
+    jmp     crash
 
 .unknown_filesystem:
     push    dword text.boot_partition_filesystem_not_implemented
-    jmp     crash_with_text
-    
+    jmp     crash
 
 
 

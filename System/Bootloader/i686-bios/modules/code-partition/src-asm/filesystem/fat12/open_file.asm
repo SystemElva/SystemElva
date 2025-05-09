@@ -16,8 +16,10 @@ fat12_open_file:
     pushad
 
 .search_file:
-    push dword [ebp - 12]
-    jmp dword crash_with_text
+    mov     eax,                [ebp - 12]
+    mov     ebp,                esp
+    push    eax
+    jmp     crash
 
 .epilog:
     popad

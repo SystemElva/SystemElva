@@ -57,9 +57,9 @@ disk_push_sector:
     ret
 
 .sector_stack_exceeded:
-    push dword text.sector_stack_exceeded
-    jmp crash_with_text
-
+    mov     ebp,                esp
+    push    dword text.sector_stack_exceeded
+    jmp     crash
 
 
 
@@ -67,6 +67,7 @@ disk_push_dummy_sector:
 .prolog:
     pushad
 
+.push_dummy_sector:
     xor     eax,                eax
     cmp word [SECTOR_STACK_HEIGHT], SECTOR_STACK_CAPACITY
     jae     .epilog
