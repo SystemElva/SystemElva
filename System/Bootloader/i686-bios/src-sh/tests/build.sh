@@ -1,5 +1,6 @@
 #!/bin/bash
 
+INVOCATION_PATH=$(pwd)
 cd $(dirname $0)/../..
 I686_PATH=$(pwd)
 
@@ -20,6 +21,8 @@ BOOT_FS_PATH=$I686_PATH/modules/bootfs
 SPECIFIED_MODULES="code-partition"
 BUILD_LABEL="$START_TIME"
 SPECIFIED_TEST_TYPES="peek,unit"
+INFORMATION_OUTPUT="/dev/stdout"
+ERROR_OUTPUT="/dev/stderr"
 
 gather_arguments() {
     local ACCEPT="ALL"
@@ -42,6 +45,18 @@ gather_arguments() {
                 if [[ "$ARGUMENT" == "-t" || "$ARGUMENT" == "--test-types" ]];
                 then
                     ACCEPT="TEST-TYPES"
+                    continue
+                fi
+
+                if [[ "$ARGUMENT" == "-io" || "$ARGUMENT" == "--info-output" ]];
+                then
+                    ACCEPT="INFO-OUTPUT"
+                    continue
+                fi
+
+                if [[ "$ARGUMENT" == "-eo" || "$ARGUMENT" == "--error-output" ]];
+                then
+                    ACCEPT="ERROR-OUTPUT"
                     continue
                 fi
 
@@ -93,48 +108,106 @@ gather_arguments() {
                     continue
                 fi
 
+
+
+                if [[ "$ARGUMENT" == "-io="* ]];
+                then
+                    ((LEN_VALUE=${#ARGUMENT}-4))
+                    INFORMATION_OUTPUT=$INVOCATION_PATH/${ARGUMENT:4:$LEN_VALUE}
+                    continue
+                fi
+
+                if [[ "$ARGUMENT" == "--info-output="* ]];
+                then
+                    ((LEN_VALUE=${#ARGUMENT}-14))
+                    INFORMATION_OUTPUT=$INVOCATION_PATH/${ARGUMENT:14:$LEN_VALUE}
+                    continue
+                fi
+
+
+
+                if [[ "$ARGUMENT" == "-eo="* ]];
+                then
+                    ((LEN_VALUE=${#ARGUMENT}-4))
+                    ERROR_OUTPUT=$INVOCATION_PATH/${ARGUMENT:4:$LEN_VALUE}
+                    continue
+                fi
+
+                if [[ "$ARGUMENT" == "--error-output="* ]];
+                then
+                    ((LEN_VALUE=${#ARGUMENT}-15))
+                    ERROR_OUTPUT=$INVOCATION_PATH/${ARGUMENT:15:$LEN_VALUE}
+                    continue
+                fi
+
+
+
                 if [[ $ACCEPT == "ALL" ]];
                 then
-                    echo "Unknown argument initializer: $ARGUMENT"
+                    echo "error: unknown flag: '$ARGUMENT'" >>$ERROR_OUTPUT
                     exit 1
                 fi
                 ;;
+
             "MODULE-NAME")
                 if [[ "$ARGUMENT" == "-"* ]];
                 then
-                    echo "Missing module list after argument initializer"
+                    echo "error: missing module list after flag" >>$ERROR_OUTPUT
                     exit 1
                 fi
                 SPECIFIED_MODULES="$ARGUMENT"
                 ACCEPT="ALL"
                 ;;
+
             "TEST-TYPES")
                 if [[ "$ARGUEMNT" == "-"* ]];
                 then
-                    echo "error: missing test type after argument initializer"
+                    echo "error: missing test type after flag" >>$ERROR_OUTPUT
                     exit 1
                 fi
                 SPECIFIED_TEST_TYPES="$ARGUMENT"
                 ACCEPT="ALL"
                 ;;
+
             "BUILD-LABEL")
                 if [[ "$ARGUMENT" == "-"* ]];
                 then
-                    echo "Missing build label after argument initializer"
+                    echo "error: missing build label after flag" >>$ERROR_OUTPUT
                     exit 1
                 fi
                 BUILD_LABEL="$ARGUMENT"
                 ACCEPT="ALL"
                 ;;
+
+            "INFO-OUTPUT")
+                if [[ "$ARGUMENT" == "-"* ]];
+                then
+                    echo "error: missing information output after flag" >>$ERROR_OUTPUT
+                    exit 1
+                fi
+                INFORMATION_OUTPUT="$ARGUMENT"
+                ACCEPT="ALL"
+                ;;
+
+            "ERROR-OUTPUT")
+                if [[ "$ARGUMENT" == "-"* ]];
+                then
+                    echo "error: missing error output after flag" >>$ERROR_OUTPUT
+                    exit 1
+                fi
+                ERROR_OUTPUT="$ARGUMENT"
+                ACCEPT="ALL"
+                ;;
+
             *)
-                echo "Internal Error: Invalid state in 'gather_arguments'."
+                echo "error: invalid state in 'gather_arguments'" >>$ERROR_OUTPUT
                 ACCEPT="ALL"
         esac
     done
 }
 
 make_instance_log_folder() {
-    echo "not supported" >&2
+    echo "info: log creation not supported" >>$INFORMATION_OUTPUT
 }
 
 make_build() {
@@ -143,7 +216,7 @@ make_build() {
     local BUILD_PATH="$I686_PATH/.tests/builds/$START_TIME"
     if [[ -d $BUILD_PATH ]];
     then
-        echo "INFO: Deleting old build named '$BUILD_LABEL'." >&0
+        echo "info: deleting old build already named '$BUILD_LABEL'." >>$INFORMATION_OUTPUT
         rm -r $BUILD_PATH
     fi
 
@@ -152,9 +225,9 @@ make_build() {
     # Write the build config log
 
     local BUILD_CONFIG="$BUILD_PATH/build_config.ini"
-    echo "[Build]" >> $BUILD_CONFIG
-    echo "Label = \"$BUILD_LABEL\"" >> $BUILD_CONFIG
-    echo "Modules = \"$MODULE_LIST\"" >> $BUILD_CONFIG
+    echo "[Build]" >>$BUILD_CONFIG
+    echo "Label = \"$BUILD_LABEL\"" >>$BUILD_CONFIG
+    echo "Modules = \"$MODULE_LIST\"" >>$BUILD_CONFIG
     
     echo "$BUILD_PATH"
 }
@@ -218,7 +291,7 @@ run_user_script_builder() {
     local BUILD_SCRIPT_PATH=$(read_config_path "$1/sources/test.ini" "$1/sources" Scripts:Build)
     if [[ ! -f $USER_SCRIPT_PATH ]];
     then
-        echo "error: no build script for user-built test '$TEST_NAME'." >&2
+        echo "error: no build script for user-built test '$TEST_NAME'." >>$ERROR_OUTPUT
         return
     fi
     $BUILD_SCRIPT_PATH $I686_PATH
@@ -232,7 +305,7 @@ build_single_unit_test_suite() {
 
     local TEST_NAME=$($INI -g General:Name "$1/test.ini")
 
-    echo "info: building unit test '$TEST_NAME'"
+    echo "info: building unit test '$TEST_NAME'" >>$INFORMATION_OUTPUT
 
     # Create test suite - folders
 
@@ -266,7 +339,7 @@ build_single_unit_test_suite() {
             run_user_script_builder $SUITE_ROOT_FOLDER
             ;;
         *)
-            echo "error: unknown test-builder for unit test '$TEST_NAME'." >&2
+            echo "error: unknown test-builder for unit test '$TEST_NAME'." >>$ERROR_OUTPUT
             ;;
     esac
 
@@ -301,7 +374,7 @@ build_all_module_unit_tests( ) {
 
         if [[ ! -f "$UNIT_TEST_PATH/test.ini" ]];
         then
-            echo "error: configuration file 'test.ini' not found in unit test '$UNIT_TEST_NAME'" >&2
+            echo "error: configuration file 'test.ini' not found in unit test '$UNIT_TEST_NAME'" >>$ERROR_OUTPUT
             continue
         fi
 
@@ -329,7 +402,7 @@ build_single_module_peek() {
     local TEST_VERSION=$($INI -g General:Version $TEST_CONFIG)
     local TEST_BUILDER=$($INI -g Building:Builder $TEST_CONFIG)
 
-    echo "info: building peek '$TEST_NAME'"
+    echo "info: building peek '$TEST_NAME'" >>$INFORMATION_OUTPUT
 
     # Gather config values
 
@@ -349,7 +422,7 @@ build_single_module_peek() {
             run_user_script_builder $SUITE_ROOT_FOLDER
             ;;
         *)
-            echo "error: unknown test-builder for peek '$TEST_NAME'" >&2
+            echo "error: unknown test-builder for peek '$TEST_NAME'" >>$ERROR_OUTPUT
             ;;
     esac
 
@@ -384,7 +457,7 @@ build_all_module_peeks() {
 
         if [[ ! -f "$PEEK_SOURCE_PATH/test.ini" ]];
         then
-            echo "error: configuration file 'test.ini' not found in peek '$PEEK_NAME'" >&2
+            echo "error: configuration file 'test.ini' not found in peek '$PEEK_NAME'" >>$ERROR_OUTPUT
             continue
         fi
         # @todo: parse peek's 'test.ini' and build according to it
@@ -399,10 +472,10 @@ build_all_tests_of_single_module() {
 
     if [[ ! -d "$MODULE_PATH/tests/" ]];
     then
-        echo "> No tests found in module '$1'. Skipping..."
+        echo "info: skipping module without tests named '$1'" >>$INFORMATION_OUTPUT
         return
     fi
-    echo "> Building tests of module '$1'"
+    echo "info: building tests of module '$1'" >>$INFORMATION_OUTPUT
 
     local BUILD_PATH=$(make_build)
 
