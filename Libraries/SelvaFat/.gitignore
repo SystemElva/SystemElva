@@ -1,0 +1,11 @@
+
+# Disk images
+*.bin
+*.img
+*.iso
+
+# Machine code
+*.a
+*.elf
+*.o
+*.so
