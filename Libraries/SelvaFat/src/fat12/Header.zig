@@ -38,13 +38,17 @@ pub const Bootsector = struct {
 
     // Rest (32 .. 512)
 
-    boot_code: [478]u8 = .{0x90} ** 478,
+    label: [11]u8 = .{' '} ** 11,
+
+    boot_code: [448]u8 = .{0x90} ** 448,
     boot_signature: [2]u8 = .{ 0x55, 0xaa },
 
     pub fn serialize(self: Self) [512]u8 {
         var bytes: [512]u8 = .{0} ** 512;
         @memcpy(bytes[0..3], self.jump_instruction[0..3]);
         @memcpy(bytes[3 .. 3 + 8], self.oem_name[0..8]);
+        @memcpy(bytes[43 .. 43 + 11], &self.label);
+        @memcpy(bytes[62..510], &self.boot_code);
 
         bytes[11] = @intCast(self.logical_sector_size & 0xff);
         bytes[12] = @intCast(self.logical_sector_size >> 8);

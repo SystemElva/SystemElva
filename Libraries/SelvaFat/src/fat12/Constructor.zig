@@ -40,14 +40,22 @@ pub const Constructor = struct {
     /// Path to the file containing the content for the reserved sectors.
     reserved_sector_content_path: []u8 = "",
 
-    fn construct_fat(
+    fn constructFat(
         self: Self,
         file: std.fs.File,
-        allocator: std.mem.Allocator,
     ) !void {
-        _ = self;
-        _ = file;
-        _ = allocator;
+        var bytes: [512]u8 = .{0} ** (512);
+        bytes[0] = 0xf8;
+        bytes[1] = 0xff;
+        bytes[2] = 0xff;
+        _ = try file.write(&bytes);
+
+        var fat_sector_index: u32 = 1;
+        while (fat_sector_index < self.fat_size) {
+            const zeroes: [512]u8 = .{0} ** 512;
+            _ = try file.write(&zeroes);
+            fat_sector_index += 1;
+        }
     }
 
     pub fn construct(
@@ -55,6 +63,8 @@ pub const Constructor = struct {
         file: std.fs.File,
         allocator: std.mem.Allocator,
     ) !void {
+        var remaining_sectors: u32 = self.len_partition;
+
         const bootsector: Bootsector = .{
             .logical_sector_size = self.logical_sector_size,
             .cluster_size = self.cluster_size,
@@ -78,11 +88,32 @@ pub const Constructor = struct {
 
             _ = try file.write(reserved_region[0..byte_count]);
         }
+        remaining_sectors -= self.num_reserved_sectors;
 
         var fat_index: u8 = 0;
         while (fat_index < self.num_fats) {
-            try construct_fat(self, file, allocator);
+            try self.constructFat(file);
             fat_index += 1;
+        }
+
+        remaining_sectors -= self.num_fats * self.fat_size;
+
+        var sector_index: u32 = 0;
+        while (sector_index < remaining_sectors) {
+            const zeroes: [512]u8 = .{0} ** 512;
+            _ = try file.write(&zeroes);
+            sector_index += 1;
         }
     }
 };
+
+test "create-fat12" {
+    const constructor: Constructor = .{ .len_partition = 1024 };
+
+    const file = try std.fs.cwd().createFile("image.img", .{});
+    defer file.close();
+    try constructor.construct(
+        file,
+        std.heap.page_allocator,
+    );
+}
