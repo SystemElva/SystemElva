@@ -58,7 +58,7 @@ pub const Constructor = struct {
         }
     }
 
-    pub fn construct(
+    pub fn toFile(
         self: Self,
         file: std.fs.File,
         allocator: std.mem.Allocator,

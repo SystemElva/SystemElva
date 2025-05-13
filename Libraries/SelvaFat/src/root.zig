@@ -1,3 +1,3 @@
 const std = @import("std");
 
-const Fat12Constructor = @import("fat12/Constructor.zig");
+pub const fat12 = @import("fat12/fat12.zig");
