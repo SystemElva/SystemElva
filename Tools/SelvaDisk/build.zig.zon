@@ -1,0 +1,16 @@
+.{
+    .name = .SelvaDisk,
+    .version = "0.1.0-indev",
+    .dependencies = .{
+        .SelvaFat = .{
+            .url = "../../Libraries/SelvaFat/",
+            .hash = "SelvaFat-0.1.0-indev-TkUULWccAAAWpUSHsSpzClDIlbJ_iKu5VV3WyvIxidFP",
+        },
+    },
+    .fingerprint = 0x8de0fc52020709c2,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
