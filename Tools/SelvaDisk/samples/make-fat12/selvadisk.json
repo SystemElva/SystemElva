@@ -1,0 +1,22 @@
+{
+    "format_version": 1,
+    "action": "create",
+
+    "partitioning": "mbr",
+    "boot_code": "boot_code.bin",
+    "partitions": [
+        {
+            "name": "code_partition",
+            "length": 63,
+            "content": "copy_file",
+            "file": "boot_code.bin"
+        },
+        {
+            "name": "bootfs",
+            "length": 1024,
+            "content": "create_fs",
+            "filesystem": "fat12",
+            "label": "ElvaBoot"
+        }
+    ]
+}
