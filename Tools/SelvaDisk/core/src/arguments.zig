@@ -12,9 +12,10 @@ pub const ArgumentSet = struct {
     };
 
     pub const ParserError = error{
-        missing_value_at_end,
-        no_output_path,
-        no_script_path,
+        MissingValueAtEnd,
+        NoOutputPathGiven,
+        NoScriptPathGiven,
+        AllocationError,
     };
 
     pub fn parse(arguments: [][]u8) ParserError!Self {
@@ -61,13 +62,13 @@ pub const ArgumentSet = struct {
             argument_index += 1;
         }
         if (accept != Accept.all) {
-            return ParserError.missing_value_at_end;
+            return ParserError.MissingValueAtEnd;
         }
         if (argument_set.output_path == null) {
-            return ParserError.no_output_path;
+            return ParserError.NoOutputPathGiven;
         }
         if (argument_set.script_path == null) {
-            return ParserError.no_script_path;
+            return ParserError.NoScriptPathGiven;
         }
         return argument_set;
     }
@@ -75,13 +76,17 @@ pub const ArgumentSet = struct {
     pub fn parseZ(
         arguments: [][*:0]u8,
         allocator: std.mem.Allocator,
-    ) !Self {
-        var argument_duplicates = try allocator.alloc([]u8, arguments.len);
+    ) ParserError!Self {
+        var argument_duplicates = allocator.alloc([]u8, arguments.len) catch {
+            return ParserError.AllocationError;
+        };
         defer allocator.free(argument_duplicates);
 
         for (arguments, 0..) |argument, index| {
             const len_argument = std.mem.len(argument);
-            argument_duplicates[index] = try allocator.alloc(u8, len_argument);
+            argument_duplicates[index] = allocator.alloc(u8, len_argument) catch {
+                return ParserError.AllocationError;
+            };
             @memcpy(
                 argument_duplicates[index],
                 arguments[index],

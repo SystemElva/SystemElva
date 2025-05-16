@@ -173,22 +173,26 @@ pub const Partition = struct {
 
 const Action = enum(u8) {
     create,
-    extract, //
-    modify, // @todo: These three don't work yet.
-    update, //
+    unpack, //
+    reformat, // @todo: These three don't work yet.
+    add, //
+    remove, //
 
     fn fromString(string: []const u8) ParserError!Action {
         if (std.mem.eql(u8, string, "create")) {
             return .create;
         }
-        if (std.mem.eql(u8, string, "extract")) {
-            return .extract;
+        if (std.mem.eql(u8, string, "unpack")) {
+            return .unpack;
         }
-        if (std.mem.eql(u8, string, "modify")) {
-            return .modify;
+        if (std.mem.eql(u8, string, "reformat")) {
+            return .reformat;
         }
-        if (std.mem.eql(u8, string, "update")) {
-            return .update;
+        if (std.mem.eql(u8, string, "add")) {
+            return .add;
+        }
+        if (std.mem.eql(u8, string, "rm")) {
+            return .remove;
         }
         return ParserError.InvalidAction;
     }
@@ -196,9 +200,10 @@ const Action = enum(u8) {
     fn toString(action: Action) []const u8 {
         return switch (action) {
             .create => "CREATE",
-            .extract => "EXTRACT",
-            .modify => "MODIFY",
-            .update => "UPDATE",
+            .unpack => "UNPACK",
+            .modify => "REFORMAT",
+            .update => "ADD",
+            .update => "REMOVE",
         };
     }
 };
