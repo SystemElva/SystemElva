@@ -1,8 +1,9 @@
 {
-    "editor.rulers": [
-        // For assembly code
-        12,
-        32,
-        80,
-    ],
+    "[nasm]": { // For assembly code
+        "editor.rulers": [
+            12,
+            32,
+            80,
+        ],
+    },
 }
